@@ -47,7 +47,26 @@
  else if(form.id==="hhSettlement"){form.dataset.requestId||=crypto.randomUUID();const b={id:form.dataset.requestId,month,currency,from_person:value(form,"from_person"),date:value(form,"date"),amount_cents:cents(form,"amount"),note:value(form,"note")};action(()=>api("/household/settlements","POST",b).then(()=>"Reimbursement recorded."));}
  }catch(err){message(err.message,true);}
  });
- async function open(){if(!dialog.open)dialog.showModal();main.innerHTML='<p class="hh-empty">Loading household review…</p>';try{await load();}catch(e){main.innerHTML=`<p class="hh-empty hh-error">${esc(e.message)}</p><button type="button" data-refresh>Try again</button>`;}}
+ // Native modal dialogs make the rest of the page inert, even when hidden by lock.css.
+ // Wait for the device gate before opening; suspend an existing dialog on re-lock.
+ const root=document.documentElement;
+ const locked=()=>root.classList.contains("minty-locked");
+ let queuedOpen=null;
+ new MutationObserver(()=>{
+   if(locked()){
+     if(dialog.open){
+       queuedOpen="resume";
+       dialog.close();
+       document.querySelector("#minty-lock .primary")?.focus();
+     }
+   }else if(queuedOpen){
+     const resume=queuedOpen==="resume";
+     queuedOpen=null;
+     if(resume)dialog.showModal(); // Preserve any unfinished edits.
+     else open();
+   }
+ }).observe(root,{attributes:true,attributeFilter:["class"]});
+ async function open(){if(locked()){queuedOpen="load";return;}queuedOpen=null;if(!dialog.open)dialog.showModal();main.innerHTML='<p class="hh-empty">Loading household review…</p>';try{await load();}catch(e){main.innerHTML=`<p class="hh-empty hh-error">${esc(e.message)}</p><button type="button" data-refresh>Try again</button>`;}}
  document.addEventListener("click",e=>{if(e.target.closest("[data-open-household]")){e.preventDefault();open();}});
  dialog.addEventListener("click",e=>{if(e.target===dialog)dialog.close();});
  if(new URLSearchParams(location.search).has("household"))open();
