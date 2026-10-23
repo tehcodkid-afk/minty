@@ -170,3 +170,22 @@ open source. In short (the [LICENSE](LICENSE) text is what counts):
 
 This covers the Minty name and logo (`brand/`) too. Third-party pieces keep their own licenses;
 for example, the Manrope typeface in the logo is under the SIL Open Font License.
+
+## Household expense review
+
+Open **More → Household** to review a month of imported transactions. Configure two participants,
+their source users (the second can remain unlinked), and a default split. Confirm personal,
+household, churning, or excluded activity; mixed purchases can have a smaller household portion.
+Pending and changed bank transactions do not contribute until reviewed. Confirmed splits are
+saved per expense, so changing the default does not rewrite earlier decisions.
+
+Suggestions use merchant/category clues and exact merchant/account/currency/direction rules that
+you choose to remember. They do not automatically approve expenses or call an external AI model.
+Record actual reimbursements against a month; voiding one preserves its audit history. Balances
+are currency-specific and cover reviewed, posted records for that month only. Downloads can be
+incomplete; reconcile the source bank before treating a period as complete. Months exceeding
+5,000 transactions withhold the balance rather than silently totaling a partial result.
+
+The household migration is additive. Restoring the pre-household application from its saved Git
+tag leaves current bank data and household records in the production database. A visual rollback
+is a code deployment, not a database restore.

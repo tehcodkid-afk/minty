@@ -10,6 +10,7 @@ beforeEach(async () => {
 
 describe("read-budget security regressions", () => {
   it.each([
+    ["GET", "/household?month=2026-09"], ["POST", "/household/settlements"],
     ["GET", "/tags"], ["GET", "/retirement"], ["GET", "/audit"],
     ["GET", "/audit/advice"], ["GET", "/points"], ["GET", "/status"],
     ["GET", "/items"], ["GET", "/health"], ["GET", "/capacity"],

@@ -47,6 +47,8 @@
     "directory": "./public",
     "binding": "ASSETS",
     "run_worker_first": [
+      "/household",
+      "/household/*",
       "/healthz",
       "/status",
       "/users",

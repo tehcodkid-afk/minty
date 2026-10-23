@@ -4,6 +4,7 @@ import { ConfigError, loadConfig, type Config } from "./config";
 import { HttpError, MAX_BODY_BYTES, bodyTooLarge, json, unprocessable } from "./http";
 import { budgetRefusal, countingDb, usesReadBudget, pruneReadCounts, rateLimited, recordReads } from "./limits";
 import * as data from "./routes/data";
+import * as household from "./routes/household";
 import * as abc from "./routes/benefits";
 import * as syncReq from "./routes/syncrequest";
 import * as link from "./routes/link";
@@ -34,6 +35,14 @@ type Handler = (c: {
 }) => Promise<Response>;
 
 const ROUTES: Array<[method: string, path: RegExp, handler: Handler]> = [
+  ["GET", /^\/household$/, ({ env, config, url }) => household.list(env, config, url)],
+  ["PUT", /^\/household\/settings$/, ({ env, config, request, email }) => household.saveSettings(env, config, request, email)],
+  ["PUT", /^\/household\/reviews\/(\d+)$/, ({ env, config, request, email, params }) => household.review(env, config, request, email, Number(params[0]))],
+  ["POST", /^\/household\/rules$/, ({ env, request, email }) => household.saveRule(env, request, email)],
+  ["DELETE", /^\/household\/rules\/(\d+)$/, ({ env, params, email }) => household.deleteRule(env, Number(params[0]), email)],
+  ["POST", /^\/household\/settlements$/, ({ env, request, email }) => household.settle(env, request, email)],
+  ["DELETE", /^\/household\/settlements\/([a-zA-Z0-9-]+)$/, ({ env, params, email }) => household.voidSettlement(env, params[0], email)],
+
   ["GET", /^\/status$/, ({ env, config, email }) => setup.status(env, config, email)],
   ["GET", /^\/users$/, ({ env, config }) => data.users(env, config)],
   ["GET", /^\/items$/, ({ env, config }) => data.items(env, config)],
