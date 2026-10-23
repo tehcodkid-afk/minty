@@ -6,7 +6,7 @@ import { HttpError, json, jsonBody, unprocessable } from "./http";
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 const API = "https://api.lunchmoney.dev/v2";
 const PAGE = 100;
-export const LUNCH_MONEY_CRON = "3,13,23,33,43,53 * * * *";
+export const LUNCH_MONEY_CRON = "*/2 * * * *";
 type Obj = Record<string, any>;
 type Selection = { remote_id:number; owner:string; target_id:number|null; start_date:string; name:string; mask:string|null; type:string; subtype:string|null; currency:string; balance:number; bank:string; expected_id:string|null; previous_owner:string|null; pending:number; source_status:string; source_updated_at:string|null };
 function token(env:Env):string {
