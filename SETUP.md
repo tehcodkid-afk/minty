@@ -328,7 +328,7 @@ Review and confirm the selection:
   distinct. Review bank, card and player carefully; ending digits alone are not identity.
 
 Use **Import next batch** to start immediately. An isolated cron processes one bounded page
-every ten minutes, rotating between accounts. First imports can take hours for many accounts.
+every two minutes, rotating between accounts. First imports can take hours for many accounts.
 After a complete import, each account becomes eligible for updates after an hour; its actual
 refresh time also depends on queue size. Later runs fetch changed transactions with a five-minute
 overlap. A full scan becomes due seven days after the previous full scan.
