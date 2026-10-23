@@ -1,4 +1,4 @@
-// Minty on Cloudflare Workers — one deployment per household (docs/serverless-plan.md, SETUP.md).
+// Minty on Cloudflare Workers â€” one deployment per household (docs/serverless-plan.md, SETUP.md).
 //
 // This file is shared by every household's fork, so it holds NO per-household values. That's
 // what keeps "Sync fork" conflict-free:
@@ -48,6 +48,7 @@
     "directory": "./public",
     "binding": "ASSETS",
     "run_worker_first": [
+      "/imports/*",
       "/household",
       "/household/*",
       "/healthz",
@@ -98,7 +99,7 @@
   // Sync (UTC), the only way it runs: no HTTP endpoint. Hourly for every bank, off the top of
   // the hour; plus every 10 minutes for banks partway through a download (src/sync.ts
   // CATCH_UP_CRON, which must match), which does nothing once every bank is caught up.
-  "triggers": { "crons": ["17 * * * *", "*/10 * * * *"] },
+  "triggers": { "crons": ["17 * * * *", "*/10 * * * *", "3,13,23,33,43,53 * * * *"] },
 
   "observability": { "enabled": true }
 }

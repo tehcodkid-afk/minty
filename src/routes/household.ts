@@ -28,7 +28,7 @@ export async function list(env: Env, config: Config, url: URL): Promise<Response
  const reviews=(await env.DB.prepare("SELECT * FROM household_reviews WHERE transaction_id IN (SELECT value FROM json_each(?))").bind(ids).all<Review>()).results;
  const rules=(await env.DB.prepare("SELECT * FROM household_rules ORDER BY id DESC LIMIT 501").all<Rule>()).results;
  const settlements=(await env.DB.prepare("SELECT * FROM household_settlements WHERE month=? AND currency=? ORDER BY date DESC,id LIMIT 1001").bind(m,c).all<Settlement>()).results;
- const history=(await env.DB.prepare("SELECT institution_name AS bank,status,last_error,CASE WHEN sync_start_cursor IS NULL THEN 0 ELSE 1 END AS catching_up FROM items WHERE products!='investments' LIMIT 101").all()).results;
+ const history=(await env.DB.prepare("SELECT institution_name AS bank,status,last_error,CASE WHEN sync_start_cursor IS NOT NULL OR (source='lunchmoney' AND txn_cursor IS NULL) THEN 1 ELSE 0 END AS catching_up FROM items WHERE products!='investments' LIMIT 101").all()).results;
  const accounts=(await env.DB.prepare(`SELECT a.id,coalesce(a.display_name,a.name,'Account') AS name,a.mask,a.owner,i.institution_name AS bank,
  EXISTS(SELECT 1 FROM household_accounts h WHERE h.account_id=a.id) AS household FROM accounts a JOIN items i ON i.id=a.item_id WHERE a.type!='investment' ORDER BY a.owner,i.institution_name,a.name LIMIT 501`).all<{id:number;household:number}>()).results;
  const selected=new Set(accounts.filter(a=>a.household).map(a=>a.id));

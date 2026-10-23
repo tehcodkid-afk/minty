@@ -241,7 +241,7 @@ export async function exchange(env: Env, config: Config, request: Request, ctx: 
 export async function reconnected(env: Env, config: Config, request: Request): Promise<Response> {
   const itemId = (await body(request)).item_id;
   if (!Number.isInteger(itemId)) throw unprocessable("item_id must be an integer");
-  const item = await env.DB.prepare("SELECT * FROM items WHERE id = ?").bind(itemId).first<ItemRow>();
+  const item = await env.DB.prepare("SELECT * FROM items WHERE id = ? AND source = 'plaid'").bind(itemId).first<ItemRow>();
   if (!item) throw new HttpError(404, "item not found");
   const result = await checkItem(env, config, item);
   const row = await env.DB.prepare(`${BANK_ROWS_SQL} WHERE i.id = ?`).bind(itemId).first<BankRow>();
@@ -274,7 +274,7 @@ export type UpdatePurpose = "reconnect" | "statements" | "investments";
 export async function updateMode(env: Env, config: Config, request: Request, email: string, purpose: UpdatePurpose = "reconnect"): Promise<Response> {
   const itemId = (await body(request)).item_id;
   if (!Number.isInteger(itemId)) throw unprocessable("item_id must be an integer");
-  const item = await env.DB.prepare("SELECT * FROM items WHERE id = ?").bind(itemId).first<ItemRow>();
+  const item = await env.DB.prepare("SELECT * FROM items WHERE id = ? AND source = 'plaid'").bind(itemId).first<ItemRow>();
   if (!item) throw new HttpError(404, "item not found");
   if (!config.accountOwner.has(item.plaid_account)) throw new HttpError(400, "item's plaid_account is not configured");
   let accessToken: string;

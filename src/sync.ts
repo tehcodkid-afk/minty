@@ -43,6 +43,7 @@ const canSpend = (b: Budget) => b.pages > 0 && (b.bytes === undefined || b.bytes
 
 export interface ItemRow {
   id: number;
+  source?: string;
   owner: string;
   plaid_account: string;
   access_token_enc: string;
@@ -79,7 +80,7 @@ const UPSERT_ACCOUNTS = `
     name = excluded.name, mask = excluded.mask, type = excluded.type, subtype = excluded.subtype,
     balance_current_cents = excluded.balance_current_cents,
     balance_available_cents = excluded.balance_available_cents,
-    currency = excluded.currency, updated_at = excluded.updated_at`;
+    currency = excluded.currency, updated_at = excluded.updated_at WHERE accounts.feed = 'plaid'`;
 
 // Transactions whose account isn't known yet are skipped (the JOIN drops them);
 // a later page's accounts[] backfills them. 'tags' live elsewhere and are never written here.
@@ -96,7 +97,7 @@ const UPSERT_TRANSACTIONS = `
          t.value ->> 'pending_transaction_id',
          t.value ->> 'account_owner'
   FROM (SELECT value FROM json_each(${PAGE}, '$.added') UNION ALL SELECT value FROM json_each(${PAGE}, '$.modified')) t
-  JOIN accounts acc ON acc.plaid_account_id = t.value ->> 'account_id'
+  JOIN accounts acc ON acc.plaid_account_id = t.value ->> 'account_id' AND acc.feed='plaid'
   WHERE true
   ON CONFLICT (plaid_txn_id) DO UPDATE SET
     amount_cents = excluded.amount_cents, date = excluded.date, datetime = excluded.datetime,
@@ -106,7 +107,7 @@ const UPSERT_TRANSACTIONS = `
 
 const DELETE_REMOVED = `
   DELETE FROM transactions
-  WHERE plaid_txn_id IN (SELECT value ->> 'transaction_id' FROM json_each(${PAGE}, '$.removed'))`;
+  WHERE account_id IN (SELECT id FROM accounts WHERE feed='plaid') AND plaid_txn_id IN (SELECT value ->> 'transaction_id' FROM json_each(${PAGE}, '$.removed'))`;
 
 // ?2 = the cursor this page was requested with ('' = none). While has_more, sync_start_cursor
 // keeps the cursor the update began from; it's cleared once the update is caught up.
@@ -298,7 +299,7 @@ export async function checkItem(env: Env, config: Config, item: ItemRow): Promis
 export async function checkConnections(env: Env, max = CHECKS_PER_RUN): Promise<Record<number, string | null>> {
   const config = loadConfig(env);
   const { results: items } = await env.DB.prepare(
-    `SELECT * FROM items WHERE status IN ('good', 'login_required')
+    `SELECT * FROM items WHERE source='plaid' AND status IN ('good', 'login_required')
        AND (checked_at IS NULL OR checked_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '${CHECK_EVERY}'))
      ORDER BY checked_at IS NOT NULL, checked_at, id LIMIT ?`,
   ).bind(max).all<ItemRow>();
@@ -318,7 +319,7 @@ export async function runSyncAll(
 ): Promise<Record<number, ItemResult>> {
   const config = loadConfig(env);
   const { results: items } = await env.DB.prepare(
-    `SELECT * FROM items WHERE status IN ('good', 'login_required') AND products = 'transactions'
+    `SELECT * FROM items WHERE source='plaid' AND status IN ('good', 'login_required') AND products = 'transactions'
      ${opts.updatesOnly ? "AND sync_start_cursor IS NOT NULL" : ""}
      ORDER BY sync_start_cursor IS NOT NULL, coalesce(attempted_at, updated_at), id`,
   ).all<ItemRow>();

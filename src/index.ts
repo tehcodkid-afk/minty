@@ -1,4 +1,5 @@
 import type { Env } from "./env";
+import * as lunchMoney from "./lunch-money";
 import { checkAccess } from "./access";
 import { ConfigError, loadConfig, type Config } from "./config";
 import { HttpError, MAX_BODY_BYTES, bodyTooLarge, json, unprocessable } from "./http";
@@ -36,6 +37,11 @@ type Handler = (c: {
 }) => Promise<Response>;
 
 const ROUTES: Array<[method: string, path: RegExp, handler: Handler]> = [
+  ["GET", /^\/imports\/lunchmoney$/, ({env,config}) => lunchMoney.catalog(env,config)],
+  ["POST", /^\/imports\/lunchmoney\/preview$/, ({env,config,request,email}) => lunchMoney.preview(env,config,request,email)],
+  ["POST", /^\/imports\/lunchmoney\/apply$/, ({env,config,request,email}) => lunchMoney.apply(env,config,request,email)],
+  ["POST", /^\/imports\/lunchmoney\/pause$/, ({env,request}) => lunchMoney.pause(env,request)],
+  ["POST", /^\/imports\/lunchmoney\/sync$/, async ({env}) => json(await lunchMoney.syncNext(env))],
   ["GET", /^\/household$/, ({ env, config, url }) => household.list(env, config, url)],
   ["PUT", /^\/household\/settings$/, ({ env, config, request, email }) => household.saveSettings(env, config, request, email)],
   ["PUT", /^\/household\/reviews\/(\d+)$/, ({ env, config, request, email, params }) => household.review(env, config, request, email, Number(params[0]))],
@@ -170,6 +176,8 @@ export default {
   },
 
   async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    // Isolate Lunch Money's page/CPU budget from direct Plaid sync and maintenance.
+    if(controller.cron===lunchMoney.LUNCH_MONEY_CRON){await lunchMoney.syncNext(env);return;}
     // The 10-minute catch-up continues unfinished downloads, unless someone asked for a sync from
     // the dashboard: then it sweeps every bank, like the hourly run. Sync only ever runs here.
     const catchUp = controller.cron === CATCH_UP_CRON;

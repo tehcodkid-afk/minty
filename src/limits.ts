@@ -28,7 +28,7 @@ const isSearch = (url: URL) =>
 /** The limiters a request counts against, in the order they're asked. */
 export function limitersFor(method: string, url: URL): Limiter[] {
   const out: Limiter[] = ["RL_GENERAL"];
-  if (url.pathname.startsWith("/link/")) out.push("RL_LINK");
+  if ((url.pathname.startsWith("/link/") || url.pathname.startsWith("/imports/"))) out.push("RL_LINK");
   else if (method === "GET" && (url.pathname === "/benefits" || isSearch(url))) out.push("RL_SEARCH");
   return out;
 }

@@ -303,3 +303,47 @@ makes sure deploys never overwrite them.
 
 All set? Minty is free and always will be. If it saves you time, you can support it on
 [Ko-fi](https://ko-fi.com/mintyme). Entirely optional.
+
+## Import an existing Lunch Money budget
+
+Open **Add account → Import from Lunch Money**, or `/lunchmoney`.
+Add `LUNCH_MONEY_TOKEN` as a Cloudflare Worker secret using your existing budget's API token.
+The token stays on the Worker; Minty makes GET requests only. Imported records and source
+metadata are stored in your private D1 database, not GitHub. Lunch Money retains its own copy.
+
+Nothing is selected by default. Choose each account, its Minty player, and either **New account**
+or the matching existing Minty account. Leave business and unwanted accounts unchecked.
+Configure players with `MINTY_USERS` first (for example `me:Me,p2:P2`);
+a Lunch Money-only player does not need separate Plaid credentials.
+
+Review and confirm the selection:
+- New accounts import from the date you choose.
+- Replacements keep posted Plaid history through its latest date and start Lunch Money on the
+  following day. Pending Plaid rows are removed. The old Plaid feed cannot write transactions
+  or balances to that card after the switch. Late corrections or missing older history before
+  this cutoff need separate reconciliation; this is not a historical fuzzy merge.
+- A player correction also reassigns that card's saved transactions, with an audit record.
+  Tags remain; household reviews affected by the change may need reconfirming.
+- Matching ending digits prompt an existing-account choice or confirmation that the account is
+  distinct. Review bank, card and player carefully; ending digits alone are not identity.
+
+Use **Import next batch** to start immediately. An isolated cron processes one bounded page
+every ten minutes, rotating between accounts. First imports can take hours for many accounts.
+After a complete import, each account becomes eligible for updates after an hour; its actual
+refresh time also depends on queue size. Later runs fetch changed transactions with a five-minute
+overlap. A full scan becomes due seven days after the previous full scan.
+Progress, pause/resume, errors and Lunch Money's source status appear on the import page.
+
+Incomplete downloads stay in staging. Repeat imports preserve transaction IDs and Minty tags.
+Split children and group parents are excluded so original bank charges count once.
+Missing records are checked individually before deletion during full scans; more than ten
+missing records stop that account's scan for review. Pause keeps all saved records.
+
+This imports bank-linked account balances and transactions, not Lunch Money manual accounts,
+investment holdings, statement details, or Lunch Money tags as Minty workflow tags.
+Keep bank reconnections in Lunch Money. Email enrichment is a separate later feature.
+One Minty installation is locked to one Lunch Money budget after the first confirmed selection.
+
+Before switching feeds, keep a code checkpoint and a private database backup. Reverting code
+alone after imports does not restore previous feed assignments, ownership or pending rows;
+restore the paired database checkpoint as well. Keep database backups and API keys out of Git.
