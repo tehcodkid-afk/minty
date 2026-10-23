@@ -56,3 +56,10 @@ export function summarize(rows: Transaction[], reviews: Review[], settlements: S
  for (const s of settlements) if (!s.voided_at) result.owed_to_a_cents += s.from_person === "a" ? s.amount_cents : -s.amount_cents;
  return result;
 }
+
+export const WORKFLOW_TAGS = ["Sweeps", "Debit", "Gold", "Household"];
+export function workflowTags(tags: string[]): string[] { return tags.filter(t => WORKFLOW_TAGS.some(w => w.toLowerCase() === t.toLowerCase())); }
+export function isSpending(t: Transaction): boolean {
+ return !t.pending && Number.isSafeInteger(t.amount_cents) && !/^(TRANSFER_IN|TRANSFER_OUT|LOAN_PAYMENTS|INCOME)(_|$)/.test((t.category || "").toUpperCase())
+  && !/\b(payment received|payment thank you|autopay payment|credit card payment)\b/.test(merchant(t));
+}

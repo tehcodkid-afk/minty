@@ -4,7 +4,7 @@ import { call, getJson, loadFixture } from "./helpers";
 import { splitCents, fingerprint } from "../src/household";
 const db=env.DB;
 const request=(path:string,method:string,b:unknown) => getJson(path,{method,body:JSON.stringify(b)});
-const list=() => getJson("/household?month=2026-09&currency=USD");
+const list=() => getJson("/household?month=2026-09&currency=USD&view=tagging");
 const settings={a_owner:"me",b_owner:"spouse",a_label:"Alex",b_label:"Robin",a_weight:2,b_weight:1,revision:0};
 async function review(id=100,extra:Record<string,unknown>={}) {
  const data=(await list()).body; const row=data.rows.find((r:any)=>r.id===id);
@@ -12,8 +12,10 @@ async function review(id=100,extra:Record<string,unknown>={}) {
 }
 beforeEach(async()=>{
  await loadFixture();
- await db.batch(["household_reviews","household_settings","household_rules","household_settlements","household_audit"].map(t=>db.prepare(`DELETE FROM ${t}`)));
+ await db.batch(["household_entries","household_recurring","household_accounts","merchant_categories","household_ai_usage","household_reviews","household_settings","household_rules","household_settlements","household_audit"].map(t=>db.prepare(`DELETE FROM ${t}`)));
 });
+beforeEach(async()=>{await db.prepare("INSERT INTO household_accounts(account_id) SELECT id FROM accounts WHERE type!='investment'").run();});
+
 describe("household review and settlement",()=>{
  it("suggests groceries without creating debt before confirmation",async()=>{
   const {status,body}=await list();expect(status).toBe(200);expect(body.summary.owed_to_a_cents).toBe(0);

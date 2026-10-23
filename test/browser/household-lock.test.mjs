@@ -114,6 +114,6 @@ test("ordinary dashboard does not open Household after unlocking", async t => {
   await page.waitForFunction(() => !document.documentElement.classList.contains("minty-locked"));
   assert.equal(await page.locator("#household").evaluate(el => el.open), false);
   assert.equal(reads(), 0);
-  await page.locator("[data-open-household]").evaluate(el => el.click());
+  await page.locator("[data-open-household=\"\"]").evaluate(el => el.click());
   await page.waitForFunction(() => document.querySelector("#household").matches(":modal"));
 });

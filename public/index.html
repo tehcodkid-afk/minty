@@ -442,7 +442,8 @@
         <div class="moremenu" id="moreMenu" hidden>
           <button type="button" data-open-bills>Bills<small>Card statements and your bills, by due date</small></button>
           <button type="button" data-open-cfa>CFA<small>Complete financial audit: cash flow, spending, recurring charges, net worth</small></button>
-          <button type="button" data-open-household>Household<small>Review shared expenses, splits and reimbursements</small></button>
+          <button type="button" data-open-household="tagging">Quick tag<small>Sweeps, Debit, Gold and Household keyboard shortcuts</small></button>
+          <button type="button" data-open-household>Household<small>Shared expenses, monthly entries and reimbursements</small></button>
           <a class="phoneonly" href="/connect">+ Add account<small>Link a bank, card or retirement account</small></a>
           <a class="phoneonly" href="/add-user">+ Add user<small>People, Plaid keys and Setup checks</small></a>
         </div>
@@ -543,7 +544,7 @@
   <div id="abcMain"></div>
 </dialog>
 <dialog id="household" class="abc hh" aria-labelledby="householdTitle" tabindex="-1">
-  <div class="abc-top"><header><h2 id="householdTitle">Household</h2><span class="sub">Your spending, shared fairly. Review first; settle with confidence.</span></header>
+  <div class="abc-top"><header><h2 id="householdTitle">Household</h2><span class="sub">Tag your spending. Keep shared expenses together.</span></header>
     <form method="dialog" class="abc-close"><button aria-label="Close household review" title="Close">×</button></form>
   </div><div id="householdMain"></div>
 </dialog>

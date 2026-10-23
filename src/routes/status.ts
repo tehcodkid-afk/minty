@@ -11,7 +11,7 @@ import { tokenKeys } from "../token-key";
  * every API route; reports only whether things are set, never values. */
 
 /** Must list every file in d1/migrations (a test checks this). */
-export const EXPECTED_MIGRATIONS = ["0001_init.sql", "0002_sync_pages.sql", "0003_account_owner.sql", "0004_sync_restart.sql", "0005_bank_health.sql", "0006_card_benefits.sql", "0007_read_indexes.sql", "0008_app_state.sql", "0009_link_sessions.sql", "0010_card_statements.sql", "0011_bills.sql", "0012_point_balances.sql", "0013_audit.sql", "0014_audit_views.sql", "0015_investments.sql", "0016_statement_marks.sql", "0017_account_names.sql", "0018_household.sql"];
+export const EXPECTED_MIGRATIONS = ["0001_init.sql", "0002_sync_pages.sql", "0003_account_owner.sql", "0004_sync_restart.sql", "0005_bank_health.sql", "0006_card_benefits.sql", "0007_read_indexes.sql", "0008_app_state.sql", "0009_link_sessions.sql", "0010_card_statements.sql", "0011_bills.sql", "0012_point_balances.sql", "0013_audit.sql", "0014_audit_views.sql", "0015_investments.sql", "0016_statement_marks.sql", "0017_account_names.sql", "0018_household.sql", "0019_household_workflow.sql"];
 
 interface Check { id: string; ok: boolean; level: "error" | "warn"; message: string; fix?: string }
 
