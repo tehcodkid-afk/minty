@@ -168,11 +168,9 @@ Design history and decisions: `docs/serverless-plan.md`.
   `crossorigin="use-credentials"` or Access answers it with the sign-in page. The service worker
   caches only the listed static shell files, never an API response (no financial data on the
   device), and never caches a redirect (the Access sign-in).
-- Forks update themselves weekly (`.github/workflows/stay-up-to-date.yml`, `gh repo sync` from
-  `rg-code/minty`; it skips this repo). GitHub's token can't change workflow files, so any edit
-  under `.github/workflows/` makes every fork's next automatic sync fail until its owner clicks
-  Sync fork: change workflows only when it's worth that, and say so in the PR. No workflow ever
-  deploys (Cloudflare does).
+- Upstream checks (`.github/workflows/stay-up-to-date.yml`) are read-only. Updates go through
+  a reviewed branch and PR, preserving fork changes; see SETUP step 9. Workflow changes require
+  workflow-edit permission. Cloudflare alone deploys production `main`; disable preview builds.
 - **D1 rows read are a daily budget** (free plan: 5,000,000 a day, then every read fails until
   00:00 UTC). A full scan of `transactions` reads every row (thousands on a real household).
   Joining a `json_each` list against transactions reads them once per list entry, which is what
@@ -181,10 +179,10 @@ Design history and decisions: `docs/serverless-plan.md`.
   add a line there. Check `rows_read` before running ad-hoc remote queries over transactions.
 - Limits (`src/limits.ts`): every API request passes the per-login rate limits (wrangler.jsonc
   `ratelimits`) right after the Access check, before any D1 or Plaid work. A missing binding
-  means no limit, never a lockout. Requests that read more than 1,000 rows add to a per-day
-  counter in `app_state`; past `READ_BUDGET_PER_DAY`, `GET /transactions`, `/accounts` and
-  `/benefits` are refused until 00:00 UTC. The cron never checks it. A new route whose reads grow
-  with the transactions goes in `isHeavyRead`. Bodies are read with `jsonBody` (16 KiB cap), never
+  means no limit, never a lockout. Every handler read adds to a per-day counter before returning
+  its response. All data routes, including edits and `/status`, check `READ_BUDGET_PER_DAY`;
+  only configuration-only `/users` is exempt. Keep new routes protected by default through
+  `usesReadBudget`. The cron never checks it. Bodies are read with `jsonBody` (16 KiB cap), never
   `request.json()`. D1 allows 50 bytes in a LIKE pattern, so user text in a LIKE needs a byte cap.
 - Browser headers (security plan step 4): `public/_headers` sets the pages' Content-Security-Policy
   (`script-src 'self'`; `/connect` has its own, with Plaid Link's hosts), `nosniff`, a same-origin

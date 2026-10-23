@@ -27,8 +27,8 @@ You'll need:
    Keep the name `minty`.
 
 Use a fork, not a download: it's how you get updates later (step 9). Then, in the fork's
-**Actions** tab, click **I understand my workflows, go ahead and enable them**, so your copy
-updates itself every week.
+**Actions** tab, enable workflows for tests and read-only weekly upstream checks.
+Updates are reviewed in a pull request before they reach your deployment.
 
 ## 2. Deploy it to Cloudflare
 
@@ -39,7 +39,9 @@ updates itself every week.
    - **Build command:** leave empty
    - **Deploy command:** replace the default `npx wrangler deploy` with `npm run deploy`. Note it's
      **npm**, not npx: `npx run deploy` fails.
-   - **Non-production branch deploy command** (`npx wrangler preview`): leave it as it is.
+   - **Non-production branches:** disable preview builds under **Settings → Builds →
+     Branch control** before adding real credentials. Test review branches in GitHub Actions
+     with dummy credentials; production secrets and D1 must not be bound to preview builds.
    - There's no production-branch option on this screen. It uses your repo's default branch
      (`main`); you can check it later under **Settings → Builds → Branch control**.
 4. Click **Deploy**. The first deploy creates the database (`minty`) and sets it up. That takes a
@@ -207,18 +209,25 @@ back to the installed app, link that bank from the browser instead.
 
 ## 9. Get updates
 
-Your fork updates itself every Monday: the **Stay up to date** workflow
-(`.github/workflows/stay-up-to-date.yml`) pulls the latest Minty into your fork's `main`, and
-Cloudflare redeploys automatically. Any database changes are applied as part of that deploy, and
-your settings, secrets and data are untouched.
+The **Check upstream updates** workflow runs every Monday and can also be run from the
+Actions tab. Its job summary links to the upstream comparison. It has read-only permissions
+and does not sync, push, merge, or deploy anything.
 
-- To update right away: **Actions → Stay up to date → Run workflow**.
-- If a run fails (GitHub emails you), click **Sync fork → Update branch** on your fork. That
-  happens when an update changes a file in `.github/workflows/`, which GitHub doesn't let a
-  workflow's own token change, or if your fork's `main` has commits of its own.
-- GitHub pauses scheduled workflows in a repository with no activity for 60 days, and emails
-  you. If that happens, re-enable it on the Actions tab, or sync by hand.
-- Workflows not enabled? Then click **Sync fork → Update branch** yourself, at least monthly.
+For each update, review upstream changes in a separate branch, preserving this fork's
+security changes. Open a pull request and require the **Worker (vitest in workerd + typecheck)**
+check before merging. Run `npm ci --ignore-scripts`, `npm run typecheck`, `npm test` and
+`npm audit` on the proposed changes. Protect `main` against direct pushes and force-pushes.
+Cloudflare's production build runs only after the reviewed changes reach `main`.
+
+Disable non-production builds in Cloudflare. Use a build token restricted to the Worker and
+D1 permissions the deployment needs, and set the build install command to
+`npm ci --ignore-scripts`. Review changes to dependencies, install scripts, workflows,
+`scripts/deploy.mjs`, and migrations before merging. Do not use **Sync fork → Update branch**
+to bypass review or overwrite this fork's security changes.
+
+The workflow file change requires a normal Git push/PR with workflow-edit permission; an
+upstream auto-sync token cannot install it. Existing scheduled runs remain unchanged until
+this change reaches the default branch. See [deployment checks](docs/security-hardening.md).
 
 ---
 
@@ -268,13 +277,20 @@ next hourly sync. If the old key is lost, those banks have to be linked again.
 ### If something leaks
 
 - **The encryption key** (but not the database): [change it](#changing-the-encryption-key).
-- **The database** (an export or a backup copy) but not the key: the bank connections in it
-  are encrypted. Change the key anyway, so that copy stays unreadable even if the old key
-  leaks later.
+- **The database** (an export or a backup copy) but not the key: transaction and account
+  records in the export are exposed; only the stored Plaid access tokens have application-level
+  encryption. Changing the encryption key protects newly encrypted records. It cannot change
+  a stolen copy: the old key can still decrypt that copy if it later leaks. Treat the incident
+  as a financial-data disclosure and assess whether Plaid credentials also need rotation.
 - **Both, or the Worker ran code you don't trust:** assume the Plaid access tokens are known.
   They only work together with your Plaid keys, so first make new Plaid secrets (Plaid dashboard
   → **Developers → Keys**) and update each `PLAID_SECRET_*` secret. Then change the encryption
-  key. Also check your Cloudflare Access policy and Cloudflare API tokens.
+  key. Also check your Cloudflare Access policy and Cloudflare API tokens. Restore reviewed
+  code and remove unauthorized deployment access before issuing new credentials. Revoke or
+  rotate affected Plaid access tokens using Plaid's supported process, or remove the affected
+  Items and link again. Minty does not yet provide token rotation or disconnect controls;
+  encryption-key rotation alone does not revoke a Plaid token. Verify that old credentials
+  no longer work and retain the incident timeline without recording secrets.
 
 ### Using a terminal instead (optional)
 

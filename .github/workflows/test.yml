@@ -26,6 +26,7 @@ jobs:
           cache: npm
       - name: Deployable secret templates never weaken auth
         run: "! grep -n MINTY_DEV_NO_AUTH .dev.vars.example"
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=moderate
       - run: npm run typecheck
       - run: npm test

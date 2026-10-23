@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config";
-import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 
 // Tests run inside workerd against a real local D1 with d1/migrations applied.
 // Plaid is never called; Access JWTs are signed with a test key (see test/helpers.ts).
