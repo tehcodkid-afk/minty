@@ -79,7 +79,7 @@ edit("no manifest", /<link rel="manifest"[^>]*>\n?/, "");
 edit("no device lock", '<link rel="stylesheet" href="/lock.css" />\n<script src="/lock.js"></script>\n', "");   // demo visitors are never asked for Face ID
 editIn("app.js", "no service worker", `if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});`, "// the demo registers no service worker");
 editIn("theme.js", "light by default", `|| (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")`, `|| "light"`);
-edit("relative asset paths", /(href|src)="\/(favicon\.svg|favicon-32\.png|apple-touch-icon\.png|abc\.css|abc\.js|bills\.css|bills\.js|bam\.css|bam\.js|cfa\.css|cfa\.js|charts\.js|egg\.css|egg\.js|swipe\.js|app\.js|theme\.js)"/g, (_, a, f) => `${a}="${f}"`, "some");
+edit("relative asset paths", /(href|src)="\/(favicon\.svg|favicon-32\.png|apple-touch-icon\.png|abc\.css|abc\.js|household\.css|household\.js|bills\.css|bills\.js|bam\.css|bam\.js|cfa\.css|cfa\.js|charts\.js|egg\.css|egg\.js|swipe\.js|app\.js|theme\.js)"/g, (_, a, f) => `${a}="${f}"`, "some");
 const html0 = files["index.html"];
 if (/(href|src)="\/(?!connect|add-user)[a-z]/.test(html0)) throw new Error(`build-demo: an absolute asset path is left: ${html0.match(/(href|src)="\/(?!connect|add-user)[^"]*"/)[0]}`);
 edit("demo styles", /^<\/head>$/m, `<link rel="stylesheet" href="demo.css" />\n</head>`);
@@ -95,7 +95,7 @@ if (goatcounter) {
 </body>`);
 }
 for (const [f, text] of Object.entries(files)) await writeFile(join(out, f), text);
-for (const f of ["abc.js", "abc.css", "bills.js", "bills.css", "bam.js", "bam.css", "pdf-read.js", "points-parse.js", "cfa.js", "cfa.css", "charts.js", "egg.js", "egg.css", "swipe.js", "bill-parse.js", "favicon.svg", "favicon-32.png", "apple-touch-icon.png"]) await copyFile(join(root, "public", f), join(out, f));
+for (const f of ["household.js", "household.css", "abc.js", "abc.css", "bills.js", "bills.css", "bam.js", "bam.css", "pdf-read.js", "points-parse.js", "cfa.js", "cfa.css", "charts.js", "egg.js", "egg.css", "swipe.js", "bill-parse.js", "favicon.svg", "favicon-32.png", "apple-touch-icon.png"]) await copyFile(join(root, "public", f), join(out, f));
 await copyFile(join(root, "demo/demo.css"), join(out, "demo.css"));
 // pdf.js for reading bill PDFs in the demo too (still only in the visitor's browser).
 await mkdir(join(out, "vendor/pdfjs"), { recursive: true });

@@ -3,7 +3,7 @@
 // updates land at once. API responses (transactions, balances, everything with data) are
 // never touched or cached: they always go to the network, behind Cloudflare Access.
 const CACHE = "minty-v7";             // v7: swipe actions (swipe.js)
-const SHELL = ["/", "/connect", "/add-user", "/theme.js", "/app.js", "/connect.js", "/add-user.js", "/abc.js", "/abc.css", "/bills.js", "/bills.css", "/bam.js", "/bam.css", "/cfa.js", "/cfa.css", "/charts.js", "/egg.js", "/egg.css", "/swipe.js", "/lock.js", "/lock.css",
+const SHELL = ["/", "/connect", "/add-user", "/theme.js", "/app.js", "/connect.js", "/add-user.js", "/abc.js", "/abc.css", "/household.js", "/household.css", "/bills.js", "/bills.css", "/bam.js", "/bam.css", "/cfa.js", "/cfa.css", "/charts.js", "/egg.js", "/egg.css", "/swipe.js", "/lock.js", "/lock.css",
                "/manifest.webmanifest", "/favicon.svg",
                "/favicon-32.png", "/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/maskable-512.png"];
 const isShell = (url) => url.origin === self.location.origin && SHELL.includes(url.pathname);

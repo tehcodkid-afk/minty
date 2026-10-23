@@ -1,0 +1,40 @@
+/* Household uses Minty's existing dialog and color tokens. */
+.hh .hh-toolbar,.hh .hh-actions { display:flex; align-items:end; gap:10px; flex-wrap:wrap; }
+.hh .hh-toolbar { margin:18px 0; }
+.hh label { display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--muted); }
+.hh input,.hh select,.hh button { font:inherit; border:1px solid var(--hairline); border-radius:8px; padding:9px 11px; color:var(--ink); background:var(--surface); min-height:38px; box-sizing:border-box; }
+.hh input,.hh select { flex:0 0 auto; max-width:100%; }
+.hh button { cursor:pointer; }
+.hh button:hover { border-color:var(--accent); }
+.hh button:disabled { cursor:wait; opacity:.5; }
+.hh .hh-primary { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+.hh .hh-search { flex:1; min-width:150px; }
+.hh .hh-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+.hh .hh-stat { border:1px solid var(--hairline); border-radius:12px; padding:15px; background:var(--surface); }
+.hh .hh-stat small,.hh .hh-stat span { display:block; color:var(--muted); font-size:12px; }
+.hh .hh-stat strong { display:block; font-size:24px; letter-spacing:-.04em; margin:5px 0; font-variant-numeric:tabular-nums; }
+.hh .hh-stat:last-child { border-color:var(--accent); }
+.hh .hh-notice { color:var(--muted); font-size:12px; margin:8px 0; line-height:1.6; }
+.hh .hh-warning { border-left:3px solid var(--warn); padding:8px 12px; background:var(--surface); }
+.hh details { border:1px solid var(--hairline); border-radius:10px; margin:12px 0; padding:12px; }
+.hh summary { cursor:pointer; font-weight:550; }
+.hh .hh-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:14px 0; }
+.hh .hh-row { border-top:1px solid var(--hairline); padding:16px 0; }
+.hh .hh-row-top { display:flex; gap:12px; justify-content:space-between; align-items:start; }
+.hh .hh-row-top strong { font-size:14px; overflow-wrap:anywhere; }
+.hh .hh-amount { white-space:nowrap; font-variant-numeric:tabular-nums; font-size:15px; }
+.hh .hh-meta { color:var(--muted); font-size:11px; margin:3px 0 7px; }
+.hh .hh-reason { color:var(--muted); font-size:12px; margin:8px 0; }
+.hh .hh-chip { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); }
+.hh .hh-row input[type=number] { width:100px; }
+.hh .hh-row .hh-note { flex:1; min-width:150px; }
+.hh .hh-check { flex-direction:row; align-items:center; margin:12px 0; }
+.hh input[type=checkbox] { min-height:0; }
+.hh .hh-split { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0; }
+.hh .hh-split[hidden] { display:none; }
+.hh .hh-empty { text-align:center; color:var(--muted); padding:35px 12px; }
+.hh .hh-line { display:flex; justify-content:space-between; align-items:center; gap:12px; border-top:1px solid var(--hairline); padding:10px 0; }
+.hh .hh-line span { overflow-wrap:anywhere; }
+.hh #householdMessage { position:sticky; bottom:0; background:var(--bg); padding:10px 0; font-size:13px; }
+.hh .hh-error { color:var(--err); }
+@media(max-width:640px) { .hh .hh-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .hh .hh-stat strong { font-size:21px; } .hh .hh-grid { grid-template-columns:1fr; } .hh .hh-toolbar label { max-width:100%; } .hh .hh-actions { align-items:stretch; } .hh .hh-actions>label { flex:1; } }

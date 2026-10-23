@@ -8,6 +8,7 @@
 // Their API calls wait until the database is ready.
 
 import worker from "../src/index.ts";
+import { seedHouseholdPreview } from "./household.ts";
 import { markSwept } from "../src/routes/syncrequest.ts";
 import { refreshTotals, snapshotBalances } from "../src/audit/totals.ts";
 import { demoEnv, generate, statements } from "./data.ts";
@@ -54,6 +55,7 @@ const ready = (async () => {
   env = { DB: new DemoD1(sql), ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
           MINTY_DEV_NO_AUTH: "1", PLAID_ENV: "sandbox", ...demoEnv(data) };
   // What the hourly cron prepares for the audit (CFA): today's balances, and the monthly totals.
+  await seedHouseholdPreview(env);
   await snapshotBalances(env);
   await refreshTotals(env);
   window.__mintyDemo = { ms: Math.round(performance.now() - t0), rows: data.transactions.length };

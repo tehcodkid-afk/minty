@@ -417,6 +417,7 @@
 </style>
 <link rel="stylesheet" href="/abc.css" />
 <link rel="stylesheet" href="/bills.css" />
+<link rel="stylesheet" href="/household.css" />
 <link rel="stylesheet" href="/bam.css" />
 <link rel="stylesheet" href="/cfa.css" />
 <link rel="stylesheet" href="/egg.css" />
@@ -441,6 +442,7 @@
         <div class="moremenu" id="moreMenu" hidden>
           <button type="button" data-open-bills>Bills<small>Card statements and your bills, by due date</small></button>
           <button type="button" data-open-cfa>CFA<small>Complete financial audit: cash flow, spending, recurring charges, net worth</small></button>
+          <button type="button" data-open-household>Household<small>Review shared expenses, splits and reimbursements</small></button>
           <a class="phoneonly" href="/connect">+ Add account<small>Link a bank, card or retirement account</small></a>
           <a class="phoneonly" href="/add-user">+ Add user<small>People, Plaid keys and Setup checks</small></a>
         </div>
@@ -540,6 +542,11 @@
   </div>
   <div id="abcMain"></div>
 </dialog>
+<dialog id="household" class="abc hh" aria-labelledby="householdTitle" tabindex="-1">
+  <div class="abc-top"><header><h2 id="householdTitle">Household</h2><span class="sub">Your spending, shared fairly. Review first; settle with confidence.</span></header>
+    <form method="dialog" class="abc-close"><button aria-label="Close household review" title="Close">×</button></form>
+  </div><div id="householdMain"></div>
+</dialog>
 <!-- Bills: card statements and bills by due date, in a popup (public/bills.js, bills.css), from the ⋯ menu. /?bills opens it. -->
 <dialog id="bills" class="abc bills" aria-labelledby="billsTitle" tabindex="-1">
   <div class="abc-top">
@@ -611,6 +618,7 @@
 <script src="/swipe.js" defer></script>
 <script src="/abc.js" defer></script>
 <script src="/bills.js" defer></script>
+<script src="/household.js" defer></script>
 <script src="/bam.js" defer></script>
 <script src="/charts.js" defer></script>
 <script src="/cfa.js" defer></script>

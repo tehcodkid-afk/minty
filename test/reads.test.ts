@@ -107,6 +107,7 @@ beforeAll(async () => {
 
 describe("D1 rows read per request (budgets)", () => {
   it.each([
+    ["/household?month=2025-06&currency=USD", 3000],
     ["/benefits", 3000],                 // only the tracked cards' rows, once each (the first version read every row once per pattern)
     ["/statements", 100],                // one row per bank
     ["/bills", 9000],                    // 28 cards x 12 statements (each window an index range: an OR there read 85,000), plus 40 own bills
