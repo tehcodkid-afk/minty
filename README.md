@@ -171,21 +171,55 @@ open source. In short (the [LICENSE](LICENSE) text is what counts):
 This covers the Minty name and logo (`brand/`) too. Third-party pieces keep their own licenses;
 for example, the Manrope typeface in the logo is under the SIL Open Font License.
 
-## Household expense review
+## Household and quick tagging
 
-Open **More → Household** to review a month of imported transactions. Configure two participants,
-their source users (the second can remain unlinked), and a default split. Confirm personal,
-household, churning, or excluded activity; mixed purchases can have a smaller household portion.
-Pending and changed bank transactions do not contribute until reviewed. Confirmed splits are
-saved per expense, so changing the default does not rewrite earlier decisions.
+**More → Quick tag** opens a keyboard queue. Select a transaction, then press **S** for Sweeps,
+**D** for Debit, **G** for Gold, or **H** for Household. A successful save advances to the next
+line; Undo restores the previous tag. Arrow keys or Skip move without changing a tag. Shortcuts
+are inactive in text fields, while saving, and while the device is locked. Buttons support phones.
+The workflow tags replace one another; unrelated tags stay on the transaction.
 
-Suggestions use merchant/category clues and exact merchant/account/currency/direction rules that
-you choose to remember. They do not automatically approve expenses or call an external AI model.
-Record actual reimbursements against a month; voiding one preserves its audit history. Balances
-are currency-specific and cover reviewed, posted records for that month only. Downloads can be
-incomplete; reconcile the source bank before treating a period as complete. Months exceeding
-5,000 transactions withhold the balance rather than silently totaling a partial result.
+Transactions without any of those four tags count as their owner's **personal / misc net spend**.
+Pending transactions, recognized transfers, income and card/debt payments do not count as spend.
+Refunds reduce net spend. Use the month, person, card and search filters to narrow the queue.
 
-The household migration is additive. Restoring the pre-household application from its saved Git
-tag leaves current bank data and household records in the production database. A visual rollback
-is a code deployment, not a database restore.
+In **Cards & split**, choose the specific accounts eligible for Household. Untagged purchases on
+those accounts are candidates only: they stay personal until explicitly tagged H. Selecting a
+card never tags old transactions. Removing a card does not remove earlier explicit Household tags.
+
+**Household** displays only Household-tagged transactions plus manual entries. Configure two
+participants and a default split (2:1 for two-thirds / one-third). Quick tagging H confirms the
+full amount using that split and the imported owner. Expand a Household row to adjust a mixed
+purchase's shared portion. A Household tag added with the ordinary tag editor requires its split
+to be confirmed here. Pending or changed transactions are not counted until confirmed; conflicting
+S/D/G tags exclude a transaction from Household. Saved splits do not change when defaults change.
+
+Add manual expenses such as Rent or Pet Sitters for a selected month. **Repeat monthly** creates
+that month's entry and a recurring template. In later months, **Add recurring expenses** records
+each template once. Removed monthly entries are not re-created on retry. **Stop repeating** leaves
+past entries intact. Do not also tag an imported copy of a manual expense as Household.
+Reimbursements record payments between participants; they do not transfer money.
+
+For P2, use **+ Add user**, configure their Plaid keys, and connect their banks under their own user.
+Then map their imported user in Cards & split and select their eligible cards. Bank linking still
+requires the account holder's consent. No import changes an existing transaction's owner.
+
+### Merchant categories
+
+Quick tag's **Merchant categories** panel can suggest a category using Cloudflare Workers AI.
+It sends a shortened merchant name and existing bank category, without amount, date, account
+fields or household owner fields. Suggestions never change tags or balances. Edit and save to
+apply a category to that merchant. The app permits up to 50 suggestions per UTC day, with bounded
+prompts and outputs, and handles unavailable or invalid AI responses without saving them.
+Manual category entry works without AI. The demo never calls a live AI model.
+
+The AI binding is configured in wrangler.jsonc. Model and structured-output details are documented
+by [Cloudflare](https://developers.cloudflare.com/workers-ai/features/json-mode/); usage is subject
+to [Workers AI pricing and account limits](https://developers.cloudflare.com/workers-ai/platform/pricing/).
+Tests disable remote bindings and use stub AI responses. `npm run test:browser` builds the fictional
+demo and exercises the actual UI/API over its browser SQLite database; it uses Edge on Windows or
+Playwright Chromium elsewhere (install with `npx playwright-core install --with-deps chromium`).
+
+Totals are month/currency-specific and reflect imported data so far. Months over 5,000 transactions
+withhold totals. The migrations are additive: restoring a saved application checkpoint leaves bank
+data and household records in the database. Design rollback does not require restoring the database.

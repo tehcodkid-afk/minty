@@ -4,6 +4,8 @@
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  /** Merchant-category suggestions only; never receives amounts or account details. */
+  AI?: { run(model: string, input: Record<string,unknown>): Promise<unknown> };
   /** Rate limits per login (wrangler.jsonc "ratelimits"). Missing = not limited (src/limits.ts). */
   RL_GENERAL?: RateLimit;
   RL_SEARCH?: RateLimit;

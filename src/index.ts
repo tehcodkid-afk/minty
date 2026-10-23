@@ -5,6 +5,7 @@ import { HttpError, MAX_BODY_BYTES, bodyTooLarge, json, unprocessable } from "./
 import { budgetRefusal, countingDb, usesReadBudget, pruneReadCounts, rateLimited, recordReads } from "./limits";
 import * as data from "./routes/data";
 import * as household from "./routes/household";
+import * as merchantCategories from "./routes/merchant-categories";
 import * as abc from "./routes/benefits";
 import * as syncReq from "./routes/syncrequest";
 import * as link from "./routes/link";
@@ -43,6 +44,15 @@ const ROUTES: Array<[method: string, path: RegExp, handler: Handler]> = [
   ["POST", /^\/household\/settlements$/, ({ env, request, email }) => household.settle(env, request, email)],
   ["DELETE", /^\/household\/settlements\/([a-zA-Z0-9-]+)$/, ({ env, params, email }) => household.voidSettlement(env, params[0], email)],
 
+  ["PUT", /^\/household\/accounts\/(\d+)$/, ({env,request,email,params}) => household.setAccount(env,request,email,Number(params[0]))],
+  ["POST", /^\/household\/entries$/, ({env,config,request,email}) => household.saveEntry(env,config,request,email)],
+  ["POST", /^\/household\/recurring$/, ({env,config,request,email}) => household.saveEntry(env,config,request,email,true)],
+  ["POST", /^\/household\/recurring\/apply$/, ({env,request,email}) => household.materialize(env,request,email)],
+  ["DELETE", /^\/household\/entries\/([a-zA-Z0-9-]+)$/, ({env,email,params}) => household.removeEntry(env,params[0],email)],
+  ["DELETE", /^\/household\/recurring\/([a-zA-Z0-9-]+)$/, ({env,email,params}) => household.removeEntry(env,params[0],email,true)],
+
+  ["PUT", /^\/household\/categories$/, ({env,request,email}) => merchantCategories.save(env,request,email)],
+  ["POST", /^\/household\/categories\/suggest$/, ({env,request}) => merchantCategories.suggest(env,request)],
   ["GET", /^\/status$/, ({ env, config, email }) => setup.status(env, config, email)],
   ["GET", /^\/users$/, ({ env, config }) => data.users(env, config)],
   ["GET", /^\/items$/, ({ env, config }) => data.items(env, config)],

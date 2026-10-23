@@ -15,7 +15,7 @@
     "test": "vitest run",
     "typecheck": "wrangler types && tsc --noEmit",
     "cf-typegen": "wrangler types",
-    "test:browser": "node --test test/browser/*.test.mjs"
+    "test:browser": "npm run build:demo && node --test test/browser/*.test.mjs"
   },
   "dependencies": {
     "jose": "^6.2.12"

@@ -29,7 +29,8 @@
 //     or in .dev.vars locally. See .dev.vars.example.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "minty",                          // must match the Worker's name in the dashboard
+  "name": "minty",
+  "ai": { "binding": "AI", "remote": true },                          // must match the Worker's name in the dashboard
   "main": "src/index.ts",
   "compatibility_date": "2026-08-15",
 
