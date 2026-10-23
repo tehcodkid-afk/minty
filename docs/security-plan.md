@@ -1,5 +1,9 @@
 # Plan: security hardening after the 2026-10-14 review
 
+**Fork update (2026-10-23):** [Current hardening and deployment checks](security-hardening.md)
+supersede the historical read-budget and automatic-update behavior below. This fork uses
+reviewed PRs rather than automatic signed-release deployment.
+
 **Status: decisions made (2026-10-14, §2); steps 1–4 done (step 4 enforced 2026-10-16); step 5 in progress (5a done). To-do list: §4.** Written 2026-10-14.
 
 An external review of `main` at 183d15b (API, pages, encryption, migrations, workflows, tests)

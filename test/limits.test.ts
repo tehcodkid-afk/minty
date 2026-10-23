@@ -7,7 +7,7 @@ import { accessToken, call, getJson, loadFixture } from "./helpers";
 import { FakePlaid, account, page, txn } from "./fake-plaid";
 import { fernetEncrypt } from "../src/fernet";
 import {
-  COUNT_ABOVE_ROWS, DEFAULT_READ_BUDGET, budgetRefusal, countingDb, limitersFor, pruneReadCounts, readsToday, recordReads,
+  DEFAULT_READ_BUDGET, budgetRefusal, countingDb, limitersFor, pruneReadCounts, readsToday, recordReads,
 } from "../src/limits";
 import { MAX_BODY_BYTES } from "../src/http";
 
@@ -32,7 +32,7 @@ const refusing = () => limiter(0);
 /** A database that fails the test if anything touches it. */
 const untouchable = new Proxy({}, { get: () => () => { throw new Error("D1 was used"); } }) as unknown as D1Database;
 
-/** ~1,500 transactions, so a search that matches nothing reads well over COUNT_ABOVE_ROWS. */
+/** ~1,500 transactions, so a search that matches nothing reads well over 1,000 rows. */
 async function loadMany(n = 1500) {
   await loadFixture();
   const rows = Array.from({ length: n }, (_, i) => [`bulk-${i}`, `2025-${String(1 + (i % 12)).padStart(2, "0")}-15`, `Shop ${i}`]);
@@ -175,30 +175,29 @@ describe("request size", () => {
 describe("the daily D1 read budget", () => {
   beforeAll(() => loadMany());
 
-  it("a request that reads more than 1,000 rows adds them to today's counter; a cheap one writes nothing", async () => {
+  it("both small and large reads add to today's counter", async () => {
     expect((await call("/tags")).status).toBe(200);
-    expect(await counter()).toBeNull();
+    const small = Number(await counter());
+    expect(small).toBeGreaterThan(0);
     expect((await call("/transactions?q=matches-nothing")).status).toBe(200);   // reads every transaction
     const first = Number(await counter());
     expect(first).toBeGreaterThan(1500);
     await call("/transactions?q=matches-nothing");
-    expect(Number(await counter())).toBe(first * 2);                            // added, not replaced
+    expect(Number(await counter())).toBe(first * 2 - small);                            // added, not replaced
   });
 
-  it("past the budget, the heavy routes are refused until tomorrow; the rest keep working", async () => {
+  it("past the budget, data routes and edits pause; configuration-only discovery keeps working", async () => {
     await setCounter(today(), DEFAULT_READ_BUDGET + 1);
-    for (const path of ["/transactions", "/transactions?q=shell", "/accounts", "/benefits"]) {
+    for (const path of ["/transactions", "/transactions?q=shell", "/accounts", "/benefits", "/tags", "/items", "/health", "/capacity", "/sync-request", "/status"]) {
       const r = await call(path);
       expect(r.status, path).toBe(429);
-      expect((await r.json() as any).detail, path).toMatch(/^Minty has read more from its database today than its daily budget \(3,000,000 rows, READ_BUDGET_PER_DAY\)\. Browsing and search pause until 00:00 UTC/);
+      expect((await r.json() as any).detail, path).toMatch(/^Minty has read more from its database today than its daily budget \(3,000,000 rows, READ_BUDGET_PER_DAY\)\. Data access and edits pause until 00:00 UTC/);
     }
-    for (const path of ["/tags", "/items", "/health", "/users", "/capacity", "/sync-request", "/status"]) {
+    for (const path of ["/users"]) {
       expect((await call(path)).status, path).toBe(200);
     }
     const tag = await call("/transactions/100/tags", { method: "PUT", body: JSON.stringify({ tags: ["groceries"] }), headers: { "content-type": "application/json" } });
-    expect(tag.status).toBe(200);                                                // edits aren't reads of the whole table
-    const c = byId((await getJson("/status")).body.checks);
-    expect(c.read_budget).toMatchObject({ ok: false, level: "warn", message: expect.stringContaining("passed the daily budget of 3,000,000") });
+    expect(tag.status).toBe(429); // write handlers can read large tables too
   });
 
   it("only a day over the budget is refused: at the budget, or yesterday's count, still works", async () => {
@@ -215,8 +214,9 @@ describe("the daily D1 read budget", () => {
     expect((await call("/accounts", { envOverrides: { READ_BUDGET_PER_DAY: "1000" } })).status).toBe(429);
     expect((await call("/accounts", { envOverrides: { READ_BUDGET_PER_DAY: "0" } })).status).toBe(200);
     expect(byId((await getJson("/status", { envOverrides: { READ_BUDGET_PER_DAY: "0" } })).body.checks).read_budget)
-      .toMatchObject({ ok: true, message: "No daily D1 read budget (READ_BUDGET_PER_DAY is 0). Counted today: 3,000,001 rows." });
+      .toMatchObject({ ok: true, message: expect.stringContaining("No daily D1 read budget") });
     expect((await call("/accounts", { envOverrides: { READ_BUDGET_PER_DAY: "lots" } })).status).toBe(429);
+    await clearCounters();
     expect(byId((await getJson("/status", { envOverrides: { READ_BUDGET_PER_DAY: "lots" } })).body.checks).read_budget)
       .toMatchObject({ ok: false, level: "error", message: "READ_BUDGET_PER_DAY isn't a whole number, so the default (3,000,000 rows) is used." });
   });
@@ -256,7 +256,6 @@ describe("the daily D1 read budget", () => {
     await recordReads(E.DB, 34);
     expect(await readsToday(E.DB)).toBe(1234);
     expect(await readsToday(E.DB, new Date(Date.now() + 86_400_000))).toBe(0);
-    expect(COUNT_ABOVE_ROWS).toBe(1000);
   });
 });
 

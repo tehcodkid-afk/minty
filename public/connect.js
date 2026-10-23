@@ -297,8 +297,8 @@ document.getElementById("statements").addEventListener("click", async e => {
 });
 
 // Investment accounts for EGG (docs/cfa.md §3): per bank, ask for Investments through Plaid Link
-// (update mode: the same connection, no new Trial slot), or turn it off. Listed: banks with it on,
-// and banks that already show investment accounts.
+// (update mode: the same connection, no new Trial slot), or turn it off. Keep every linked bank
+// visible: a bank linked for Transactions may have no accounts until Investments is authorized.
 const INVESTMENT_STATE = {
   off: "Off",
   pending: "On: the accounts arrive within about ten minutes.",
@@ -308,7 +308,7 @@ const INVESTMENT_STATE = {
   error: "Couldn't fetch them; Minty retries every hour.",
 };
 async function loadInvestments() {
-  try { const r = await fetch("/investments"); if (r.ok) investmentList = (await r.json()).filter(b => b.investments !== "off" || b.investment_accounts > 0); } catch {}
+  try { const r = await fetch("/investments"); if (r.ok) investmentList = await r.json(); } catch {}
   renderInvestments();
 }
 function renderInvestments() {

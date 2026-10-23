@@ -9,13 +9,12 @@ import type { Env } from "./env";
  * aren't what protects the database.
  *
  * The D1 read budget does that. D1's free plan allows 5,000,000 rows read a day, then every read
- * fails until 00:00 UTC, sync included. Each request's rows_read is added up; a request that read
- * more than COUNT_ABOVE_ROWS adds its total to a per-day counter in app_state (one upsert; cheap
- * requests never write). Once the day's count passes READ_BUDGET_PER_DAY, the routes whose reads
- * grow with the household's transactions are refused until 00:00 UTC, which leaves the rest of
- * the quota to sync and the cheap routes. The cron never checks the budget. */
-
-export const COUNT_ABOVE_ROWS = 1000;
+ * fails until 00:00 UTC, sync included. Every request's rows_read is added to a per-day counter
+ * in app_state, including small queries. All data routes check the budget before their handler
+ * runs, including edits and setup checks. Only configuration-only /users is exempt.
+ * Accounting is saved before the response returns so sequential requests see the new total.
+ * This is a headroom guard, not a hard D1 quota reservation: concurrent in-flight queries and
+ * the cron can also consume reads. The cron never checks the budget. */
 export const DEFAULT_READ_BUDGET = 3_000_000;
 export const KEEP_READ_DAYS = 7;
 const READ_KEY = "rows_read:";
@@ -50,9 +49,10 @@ export async function rateLimited(env: Env, email: string, method: string, url: 
   return false;
 }
 
-/** Routes whose reads grow with the number of transactions: refused once the day's budget is spent. */
-export const isHeavyRead = (method: string, url: URL) =>
-  method === "GET" && ["/transactions", "/accounts", "/benefits", "/bills"].includes(url.pathname);
+/** Default-deny budget coverage: new API routes are protected unless explicitly data-free.
+ * /healthz is handled before routing. /users only reads Worker configuration. */
+export const usesReadBudget = (method: string, url: URL) =>
+  !(method === "GET" && url.pathname === "/users");
 
 /** READ_BUDGET_PER_DAY: unset or blank = the default; "0" = no budget; anything that isn't a whole
  * number = the default, and Setup checks flag it (rather than refusing every request). */
@@ -79,7 +79,7 @@ export async function budgetRefusal(env: Env, now = new Date()): Promise<string 
   const used = await readsToday(env.DB, now).catch(() => 0);
   if (used <= budget) return null;
   return `Minty has read more from its database today than its daily budget (${budget.toLocaleString("en-US")} rows, ` +
-    "READ_BUDGET_PER_DAY). Browsing and search pause until 00:00 UTC, so syncing keeps working.";
+    "READ_BUDGET_PER_DAY). Data access and edits pause until 00:00 UTC to leave capacity for scheduled syncing.";
 }
 
 /** Adds a request's rows to today's counter: one upsert. */

@@ -38,7 +38,9 @@ web browser.
   Citi Strata Premier, Altitude Reserve), with what's used and what's still open, checked
   against the statement credits. See `docs/abc.md`.
 - **Deploys**: Cloudflare Workers Builds runs `npm run deploy` on every push to `main`
-  (apply D1 migrations, then deploy). GitHub Actions only runs tests.
+  (apply D1 migrations, then deploy). GitHub Actions runs tests, dependency audits, and
+  read-only upstream update checks. Updates reach `main` through reviewed pull requests;
+  see [deployment checks](docs/security-hardening.md).
 
 ## People and the trial overflow model
 People come from the `MINTY_USERS` variable, `key:Name` in display order. The default is one
@@ -70,8 +72,10 @@ the secret names to add in the Cloudflare dashboard.
 - **Cross-site writes are refused**, so another site can't act through a signed-in browser.
 - **Limits per login:** 120 API requests a minute, 30 searches or ABC loads, 10 bank-linking
   calls (approximate: Cloudflare counts per location). Request bodies are capped at 16 KiB.
-  A daily D1 read budget pauses browsing and search before Cloudflare's free quota runs out,
-  so sync keeps working.
+  Every data route checks the daily D1 read budget, and even small queries count. When spent,
+  data access and edits pause until 00:00 UTC; configuration-only `/users` and `/healthz`
+  remain available. Scheduled sync continues independently. The budget reserves headroom;
+  concurrent requests and D1's separate write quota still need usage monitoring.
 - **Plaid access tokens are Fernet-encrypted** with `TOKEN_ENC_KEY` before they're stored.
   Plaid keys and `TOKEN_ENC_KEY` are Worker secrets; they never reach the browser or the database.
   The key can be changed without linking banks again (SETUP, "Changing the encryption key").

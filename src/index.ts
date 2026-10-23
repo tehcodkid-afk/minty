@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { checkAccess } from "./access";
 import { ConfigError, loadConfig, type Config } from "./config";
 import { HttpError, MAX_BODY_BYTES, bodyTooLarge, json, unprocessable } from "./http";
-import { COUNT_ABOVE_ROWS, budgetRefusal, countingDb, isHeavyRead, pruneReadCounts, rateLimited, recordReads } from "./limits";
+import { budgetRefusal, countingDb, usesReadBudget, pruneReadCounts, rateLimited, recordReads } from "./limits";
 import * as data from "./routes/data";
 import * as abc from "./routes/benefits";
 import * as syncReq from "./routes/syncrequest";
@@ -124,11 +124,11 @@ export default {
     const hit = matches.find(([m]) => m === request.method);
     if (!hit) return json({ detail: "method not allowed" }, 405);
 
-    // Every statement the handler runs is counted; a request that read a lot adds to the day's total.
+    // Every handler read counts, including small queries; refusals do not write usage counters.
     const counted = countingDb(env.DB);
     try {
       const config = loadConfig(env);
-      if (isHeavyRead(request.method, url)) {
+      if (usesReadBudget(request.method, url)) {
         const refusal = await budgetRefusal(env);
         if (refusal) return json({ detail: refusal }, 429);
       }
@@ -144,8 +144,8 @@ export default {
       return json({ detail: "internal error" }, 500);
     } finally {
       const rows = counted.rows();
-      if (rows > COUNT_ABOVE_ROWS) {
-        ctx.waitUntil(recordReads(env.DB, rows).catch((e) => console.error("counting reads failed:", e instanceof Error ? e.message : e)));
+      if (rows > 0) {
+        await recordReads(env.DB, rows).catch((e) => console.error("counting reads failed:", e instanceof Error ? e.message : e));
       }
     }
   },

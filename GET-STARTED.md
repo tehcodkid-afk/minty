@@ -22,7 +22,7 @@ More detail on any step: [SETUP.md](SETUP.md).
 
 1. Signed in to GitHub, open https://github.com/rg-code/minty/fork and click **Create fork**.
 2. In your new fork, open the **Actions** tab and click **I understand my workflows, go ahead and
-   enable them**. This lets your copy update itself every week (step 7).
+   enable them**. This enables tests and read-only weekly update checks (step 7).
 
 ## 3. Put it on Cloudflare
 
@@ -30,6 +30,8 @@ More detail on any step: [SETUP.md](SETUP.md).
 2. Connect GitHub and pick **minty**.
 3. Set **Deploy command** to `npm run deploy`. Leave everything else as it is.
 4. Click **Deploy**, and wait for "Success" (a minute or two).
+5. Before adding bank credentials, disable non-production branch builds and follow the
+   [deployment security checks](docs/security-hardening.md).
 
 ## 4. Lock it to you
 
@@ -86,14 +88,12 @@ More detail on any step: [SETUP.md](SETUP.md).
 
 ## 7. Keep it up to date (optional)
 
-Nothing to do if you did step 2: your copy pulls the latest Minty **every Monday**, and
-Cloudflare redeploys it. Your data and settings stay.
+The **Check upstream updates** workflow checks upstream every Monday and shows a comparison
+link in its job summary. It never changes or deploys your fork.
 
-- **Want it now?** On your fork: **Actions → Stay up to date → Run workflow**.
-- **Got an email that it failed?** Open your fork and click **Sync fork → Update branch**. That's
-  all it takes; it happens when an update changes one of GitHub's workflow files.
-- **Skipped step 2?** Then nothing updates by itself. Enable it now, or click **Sync fork →
-  Update branch** at least once a month.
+Review updates in a branch, run the tests and dependency audit, then merge a pull request.
+Keep this fork's security changes when incorporating upstream work. Follow
+[SETUP step 9](SETUP.md#9-get-updates) for branch protection and build settings.
 
 ## Later
 

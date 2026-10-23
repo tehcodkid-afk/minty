@@ -5,12 +5,19 @@
 // (automatic provisioning, by database_name in wrangler.jsonc), so deploy first, then migrate.
 // Migrations are tracked in d1_migrations, so re-running this is safe.
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+
+// Run the installed CLI directly so deployment also works on Windows without a shell.
+const require = createRequire(import.meta.url);
+const WRANGLER = resolve(dirname(require.resolve("wrangler/package.json")), require("wrangler/package.json").bin.wrangler);
 
 // Extra flags are passed to every wrangler call, e.g. `npm run deploy -- --temporary`.
 const EXTRA = process.argv.slice(2);
 
 function wrangler(...args) {
-  const r = spawnSync("npx", ["wrangler", ...args, ...EXTRA], { encoding: "utf8", stdio: ["inherit", "pipe", "pipe"] });
+  const r = spawnSync(process.execPath, [WRANGLER, ...args, ...EXTRA], { encoding: "utf8", stdio: ["inherit", "pipe", "pipe"] });
+  if (r.error) console.error(r.error.message);
   process.stdout.write(r.stdout ?? "");
   process.stderr.write(r.stderr ?? "");
   return { ok: r.status === 0, output: `${r.stdout ?? ""}\n${r.stderr ?? ""}` };

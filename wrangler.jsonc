@@ -87,7 +87,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "minty",               // created by the first deploy, then reused by name
+      "database_name": "minty-production",    // separate from the original Sandbox database
       "migrations_dir": "d1/migrations"
     }
   ],
