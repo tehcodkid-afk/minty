@@ -1,4 +1,4 @@
-// Minty on Cloudflare Workers â€” one deployment per household (docs/serverless-plan.md, SETUP.md).
+// Minty on Cloudflare Workers — one deployment per household (docs/serverless-plan.md, SETUP.md).
 //
 // This file is shared by every household's fork, so it holds NO per-household values. That's
 // what keeps "Sync fork" conflict-free:
@@ -96,9 +96,10 @@
     }
   ],
 
-  // Sync (UTC), the only way it runs: no HTTP endpoint. Hourly for every bank, off the top of
+  // Direct Plaid sync (UTC): hourly for every bank, off the top of
   // the hour; plus every 10 minutes for banks partway through a download (src/sync.ts
   // CATCH_UP_CRON, which must match), which does nothing once every bank is caught up.
+  // Lunch Money has its own two-minute page budget, isolated from the Plaid schedules.
   "triggers": { "crons": ["17 * * * *", "*/10 * * * *", "*/2 * * * *"] },
 
   "observability": { "enabled": true }
