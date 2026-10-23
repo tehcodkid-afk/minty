@@ -19,7 +19,7 @@ async function refresh(){
 }
 $("refresh").onclick=()=>action(refresh);
 $("search").oninput=()=>document.querySelectorAll("[data-account]").forEach(el=>el.hidden=!el.dataset.search.includes($("search").value.toLowerCase()));
-$("accounts").onchange=e=>{if(e.target.name==="target"){const row=e.target.closest("[data-account]"),option=e.target.selectedOptions[0];if(option.dataset.owner)row.querySelector('[name="owner"]').value=option.dataset.owner;}};
+$("accounts").onchange=e=>{if(e.target.name==="target"){const row=e.target.closest("[data-account]"),option=e.target.selectedOptions[0];if(option.dataset.owner&&!row.querySelector('[name="owner"]').value)row.querySelector('[name="owner"]').value=option.dataset.owner;}};
 $("selection").onsubmit=e=>{e.preventDefault();action(async()=>{
  const selections=[...document.querySelectorAll("[data-account]")].filter(el=>el.querySelector('[name="selected"]').checked).map(el=>({remote_id:Number(el.dataset.account),owner:el.querySelector('[name="owner"]').value,target_id:Number(el.querySelector('[name="target"]').value)||null,start_date:$("start").value,distinct:el.querySelector('[name="distinct"]').checked}));
  plan=await api("/preview",{selections});

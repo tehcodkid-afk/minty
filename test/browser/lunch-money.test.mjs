@@ -39,6 +39,7 @@ for(const width of [1280,390])test("select, assign and review accounts at width 
  await first.locator('[name="selected"]').check();await first.locator('[name="target"]').selectOption("10");
  assert.equal(await first.locator('[name="owner"]').inputValue(),"me");
  await second.locator('[name="selected"]').check();await second.locator('[name="owner"]').selectOption("p2");
+ await second.locator('[name="target"]').selectOption("10");assert.equal(await second.locator('[name="owner"]').inputValue(),"p2");await second.locator('[name="target"]').selectOption("");
  await page.locator("#start").fill("2026-01-01");await page.locator("#preview").click();await page.locator("#review").waitFor();
  assert.equal(applied,false);assert.deepEqual(requests[0].body.selections.map(s=>[s.remote_id,s.owner,s.target_id]),[[701,"me",10],[702,"p2",null]]);
  assert.match(await page.locator("#reviewRows").innerText(),/2026-10-02/);assert.doesNotMatch(await page.locator("#reviewRows").innerText(),/Business/);
