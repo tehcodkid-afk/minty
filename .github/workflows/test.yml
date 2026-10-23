@@ -30,3 +30,5 @@ jobs:
       - run: npm audit --audit-level=moderate
       - run: npm run typecheck
       - run: npm test
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run test:browser
