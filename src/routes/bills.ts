@@ -197,7 +197,7 @@ export async function statementBanks(env: Env): Promise<Response> {
     `SELECT i.id AS item_id, i.institution_name AS bank, i.owner, coalesce(ss.status, 'off') AS statements,
             ss.synced_at, ss.last_error
      FROM items i LEFT JOIN statement_sync ss ON ss.item_id = i.id
-     WHERE EXISTS (SELECT 1 FROM accounts a WHERE a.item_id = i.id AND a.type = 'credit')
+     WHERE i.source='plaid' AND EXISTS (SELECT 1 FROM accounts a WHERE a.item_id = i.id AND a.type = 'credit')
      ORDER BY i.owner, i.id`).all();
   return json(results);
 }

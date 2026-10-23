@@ -69,7 +69,7 @@ export async function investmentBanks(env: Env): Promise<Response> {
             s.synced_at, s.last_error,
             (SELECT count(*) FROM accounts a WHERE a.item_id = i.id AND ${IN_RETIREMENT("a")}) AS retirement_accounts,
             (SELECT count(*) FROM accounts a WHERE a.item_id = i.id AND a.type = 'investment') AS investment_accounts
-     FROM items i LEFT JOIN investment_sync s ON s.item_id = i.id
+     FROM items i LEFT JOIN investment_sync s ON s.item_id = i.id WHERE i.source = 'plaid'
      ORDER BY i.owner, i.id`).all();
   return json(results);
 }

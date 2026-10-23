@@ -157,9 +157,9 @@ describe("items, accounts, capacity", () => {
     const r = await call("/items");
     const text = await r.text();
     expect(JSON.parse(text)).toEqual([
-      { id: 1, owner: "me", plaid_account: "me_primary", institution_name: "Chase", status: "good", updated_at: "2026-09-01T00:00:00.000Z",
+      { id: 1, source: "plaid", owner: "me", plaid_account: "me_primary", institution_name: "Chase", status: "good", updated_at: "2026-09-01T00:00:00.000Z",
         health: expect.objectContaining({ state: "stalled", level: "warn" }) },
-      { id: 2, owner: "spouse", plaid_account: "spouse_primary", institution_name: "Ally", status: "good", updated_at: "2026-09-01T00:00:00.000Z",
+      { id: 2, source: "plaid", owner: "spouse", plaid_account: "spouse_primary", institution_name: "Ally", status: "good", updated_at: "2026-09-01T00:00:00.000Z",
         health: expect.objectContaining({ state: "stalled", level: "warn" }) },
     ]);
     expect(text).not.toMatch(/gAAAA|access_token/);

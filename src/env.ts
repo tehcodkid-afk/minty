@@ -3,6 +3,8 @@
  * PLAID_CLIENT_ID_<KEY>_<SLOT> / PLAID_SECRET_<KEY>_<SLOT>, hence the index signature. */
 export interface Env {
   DB: D1Database;
+  /** Shared Lunch Money budget token; stored only as a Cloudflare secret. */
+  LUNCH_MONEY_TOKEN?: string;
   ASSETS: Fetcher;
   /** Merchant-category suggestions only; never receives amounts or account details. */
   AI?: { run(model: string, input: Record<string,unknown>): Promise<unknown> };

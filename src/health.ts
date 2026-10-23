@@ -35,6 +35,10 @@ export interface BankRow {
   synced_once: number;
   consent_expires_at: string | null;
   txns: number;
+  source?: string;
+  lm_error?: string|null;
+  lm_enabled?: number|null;
+  lm_success?: string|null;
   products?: string;                        // 'investments': an Investments-only login (EGG)
   inv_status?: string | null;               // its investment_sync status
   inv_synced_at?: string | null;
@@ -44,7 +48,7 @@ export interface BankRow {
 /** Every bank with what its verdict needs. Statuses other than good / login_required / error
  * (e.g. 'demo' in the seed data) aren't synced and are always "ok". */
 export const BANK_ROWS_SQL = `
-  SELECT i.id, i.owner, i.plaid_account, i.institution_name, i.status, i.updated_at,
+  SELECT l.last_error AS lm_error,l.enabled AS lm_enabled,l.last_success AS lm_success,i.id, i.source, i.owner, i.plaid_account, i.institution_name, i.status, i.updated_at,
          i.last_error, i.last_error_message, i.consent_expires_at,
          i.sync_start_cursor IS NOT NULL AS downloading, i.txn_cursor IS NOT NULL AS synced_once,
          -- counted only while a history download runs (the only message that shows it): counting
@@ -53,7 +57,9 @@ export const BANK_ROWS_SQL = `
               THEN (SELECT count(*) FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE a.item_id = i.id)
               ELSE 0 END AS txns,
          i.products, s.status AS inv_status, s.synced_at AS inv_synced_at, s.last_error AS inv_error
-  FROM items i LEFT JOIN investment_sync s ON s.item_id = i.id`;
+  FROM items i LEFT JOIN investment_sync s ON s.item_id = i.id
+  LEFT JOIN accounts la ON la.item_id=i.id AND i.source='lunchmoney'
+  LEFT JOIN lunch_money_accounts l ON l.account_id=la.id`;
 
 /** Plaid error codes (and Minty's own) in plain words. Unknown codes fall back to Plaid's text. */
 const MEANING: Record<string, string> = {
@@ -117,6 +123,14 @@ export function strandedWhy(env: Env, config: Config, plaidAccount: string): str
 }
 
 export function bankHealth(env: Env, config: Config, row: BankRow, now = Date.now()): Health {
+  if (row.source === "lunchmoney") {
+    if (!env.LUNCH_MONEY_TOKEN) return {...OK(row),state:"stranded",level:"error",message:"Lunch Money token is missing.",fix:"Add LUNCH_MONEY_TOKEN in Cloudflare."};
+    if (row.lm_error) return {...OK(row),state:"stalled",level:"warn",message:row.lm_error,fix:"Open Lunch Money import to review this account."};
+    if (row.lm_enabled===0) return {...OK(row),state:"stalled",level:"info",message:"Lunch Money import is paused.",fix:"Resume it from Lunch Money import."};
+    if (row.lm_success && now-Date.parse(row.lm_success)>STALE_SYNC_HOURS*3600000) return {...OK(row),state:"stalled",level:"warn",message:"Lunch Money import is behind.",fix:"Open Lunch Money import to check progress."};
+    if (!row.synced_once) return {...OK(row),state:"downloading",level:"info",message:"Lunch Money history is waiting to import.",fix:"Open Lunch Money import to check progress."};
+    return OK(row);
+  }
   if (!["good", "login_required", "error"].includes(row.status)) return OK(row);
   const bank = bankName(row);
   const base = { ...OK(row), detail: describeError(row.last_error, row.last_error_message) };

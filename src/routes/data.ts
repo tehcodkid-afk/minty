@@ -35,7 +35,7 @@ export async function users(env: Env, config: Config): Promise<Response> {
 export async function items(env: Env, config: Config): Promise<Response> {
   const now = Date.now();
   return json((await bankRows(env)).map((r) => ({
-    id: r.id, owner: r.owner, plaid_account: r.plaid_account, institution_name: r.institution_name,
+    id: r.id, source: r.source, owner: r.owner, plaid_account: r.plaid_account, institution_name: r.institution_name,
     status: r.status, updated_at: r.updated_at, health: bankHealth(env, config, r, now),
   })));
 }
@@ -56,7 +56,7 @@ export async function accounts(env: Env, url: URL): Promise<Response> {
   const owner = url.searchParams.get("owner");
   // Retirement accounts (EGG) are islanded: left out unless ?view=all, or switched to the dashboard.
   const island = url.searchParams.get("view") === "all" ? "1" : `NOT ${IN_RETIREMENT("accounts")}`;
-  const select = `SELECT id, owner, item_id, plaid_account_id, ${ACCOUNT_NAME("accounts")} AS name, name AS plaid_name, display_name, mask, type, subtype,
+  const select = `SELECT id, owner, item_id, plaid_account_id, feed, ${ACCOUNT_NAME("accounts")} AS name, name AS plaid_name, display_name, mask, type, subtype,
                          balance_current_cents / 100.0 AS balance_current,
                          balance_available_cents / 100.0 AS balance_available,
                          currency, updated_at, ${IN_RETIREMENT("accounts")} AS in_retirement

@@ -43,7 +43,7 @@ const SAVE_HOLDINGS = [
    ON CONFLICT (plaid_account_id) DO UPDATE SET
      name = excluded.name, mask = excluded.mask, type = excluded.type, subtype = excluded.subtype,
      balance_current_cents = excluded.balance_current_cents, balance_available_cents = excluded.balance_available_cents,
-     currency = excluded.currency, updated_at = excluded.updated_at`,
+     currency = excluded.currency, updated_at = excluded.updated_at WHERE accounts.feed = 'plaid'`,
   `INSERT INTO securities (security_id, name, ticker, type, is_cash_equivalent, close_price, close_price_as_of, updated_at)
    SELECT s.value ->> 'security_id', s.value ->> 'name', s.value ->> 'ticker_symbol', s.value ->> 'type',
           CASE json_type(s.value, '$.is_cash_equivalent') WHEN 'true' THEN 1 WHEN 'false' THEN 0 END,
