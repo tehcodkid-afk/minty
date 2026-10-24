@@ -155,6 +155,10 @@ export function normalizeTransaction(t:Obj,remote:number,categories:Map<number,O
  const c=categories.get(t.category_id);
  return {id:t.id,amount_cents:cents(t.amount),currency:currency(t.currency),date:date(t.date),name:str(t.payee),merchant_name:str(t.plaid_metadata?.merchant_name)||str(t.payee),category:c?.is_income?"INCOME":c?.exclude_from_totals?"TRANSFER_OUT":str(t.plaid_metadata?.personal_finance_category?.primary)||str(c?.name)||"OTHER",pending:t.is_pending?1:0,account_owner:str(t.plaid_metadata?.account_owner)||null,body:JSON.stringify(t)};
 }
+// Compare nullable ledger fields, not source metadata/import timestamps. A repeated or empty
+// incremental page must not rewrite transactions or trigger a full audit rebuild.
+const LEDGER_FIELDS = ["amount_cents","currency","date","name","merchant_name","category","pending","account_owner"];
+const ledgerChanged = (left:string,right:(field:string)=>string) => LEDGER_FIELDS.map(field=>`${left}.${field} IS NOT (${right(field)})`).join(" OR ");
 /** One bounded page per call. Staging makes failed/incomplete imports invisible to the ledger. */
 export async function syncNext(env:Env):Promise<Obj> {
  if(!env.LUNCH_MONEY_TOKEN)return {configured:false};
@@ -210,20 +214,26 @@ export async function syncNext(env:Env):Promise<Obj> {
     batch.push(q("INSERT INTO lunch_money_stage(remote_id,transaction_id,body) SELECT ?1,?3,?4 WHERE "+guard+" ON CONFLICT(remote_id,transaction_id) DO UPDATE SET body=excluded.body",n.id,JSON.stringify(n)));
    }
    batch.push(q("SELECT CASE WHEN NOT "+guard+" OR NOT EXISTS(SELECT 1 FROM lunch_money_stage s JOIN transactions t ON t.plaid_txn_id=?3||s.transaction_id WHERE s.remote_id=?1 AND t.account_id!=?4) THEN 1 ELSE json('account conflict') END",prefix,claim.account_id));
+   // Decide inside the publication transaction, before changing the ledger. Only real inserts,
+   // corrections or confirmed deletions invalidate the expensive aggregate tables.
+   batch.push(q(`INSERT INTO app_state(key,value) SELECT 'audit_dirty','1' WHERE ${guard} AND (
+    EXISTS(SELECT 1 FROM lunch_money_stage s LEFT JOIN transactions t ON t.plaid_txn_id=?3||s.transaction_id
+     WHERE s.remote_id=?1 AND (t.id IS NULL OR ${ledgerChanged("t",field=>`s.body->>'${field}'`)}))
+    OR EXISTS(SELECT 1 FROM transactions WHERE account_id=?4 AND plaid_txn_id IN (SELECT value FROM json_each(?5))))
+    ON CONFLICT(key) DO UPDATE SET value='1' WHERE app_state.value IS NOT '1'`,prefix,claim.account_id,JSON.stringify(deleted)));
    // Merge by source transaction ID, preserving canonical IDs and all Minty tags/reviews.
    batch.push(q(`INSERT INTO transactions(owner,account_id,plaid_txn_id,amount_cents,currency,date,name,merchant_name,category,pending,account_owner)
     SELECT a.owner,a.id,?3||s.transaction_id,s.body->>'amount_cents',s.body->>'currency',s.body->>'date',s.body->>'name',s.body->>'merchant_name',s.body->>'category',s.body->>'pending',s.body->>'account_owner'
     FROM lunch_money_stage s JOIN lunch_money_accounts l ON l.remote_id=s.remote_id JOIN accounts a ON a.id=l.account_id
     WHERE s.remote_id=?1 AND ${guard}
-    ON CONFLICT(plaid_txn_id) DO UPDATE SET amount_cents=excluded.amount_cents,currency=excluded.currency,date=excluded.date,name=excluded.name,merchant_name=excluded.merchant_name,category=excluded.category,pending=excluded.pending,account_owner=excluded.account_owner WHERE transactions.account_id=excluded.account_id`,prefix));
+    ON CONFLICT(plaid_txn_id) DO UPDATE SET amount_cents=excluded.amount_cents,currency=excluded.currency,date=excluded.date,name=excluded.name,merchant_name=excluded.merchant_name,category=excluded.category,pending=excluded.pending,account_owner=excluded.account_owner WHERE transactions.account_id=excluded.account_id AND (${ledgerChanged("transactions",field=>`excluded.${field}`)})`,prefix));
    batch.push(q(`INSERT INTO lunch_money_records(transaction_id,remote_id,source_transaction_id,body,imported_at)
     SELECT t.id,?1,s.transaction_id,s.body->>'body',${NOW} FROM lunch_money_stage s JOIN transactions t ON t.plaid_txn_id=?3||s.transaction_id WHERE s.remote_id=?1 AND ${guard}
-    ON CONFLICT(transaction_id) DO UPDATE SET body=excluded.body,imported_at=excluded.imported_at`,prefix));
+    ON CONFLICT(transaction_id) DO UPDATE SET body=excluded.body,imported_at=excluded.imported_at WHERE lunch_money_records.body IS NOT excluded.body`,prefix));
    batch.push(q("DELETE FROM transactions WHERE plaid_txn_id IN (SELECT value FROM json_each(?3)) AND account_id=(SELECT account_id FROM lunch_money_accounts WHERE remote_id=?1) AND "+guard,JSON.stringify(deleted)));
    batch.push(q(`UPDATE accounts SET balance_current_cents=?3,balance_available_cents=NULL,currency=?4,updated_at=${NOW} WHERE id=(SELECT account_id FROM lunch_money_accounts WHERE remote_id=?1) AND ${guard}`,cents(account.balance),currency(account.currency)));
    batch.push(q(`UPDATE items SET updated_at=${NOW},txn_cursor='lunchmoney',last_error=NULL WHERE id=?3 AND source='lunchmoney' AND ${guard}`,current.item_id));
    batch.push(q("DELETE FROM lunch_money_stage WHERE remote_id=?1 AND "+guard));
-   batch.push(q(`INSERT INTO app_state(key,value) SELECT 'audit_dirty','1' WHERE ${guard} ON CONFLICT(key) DO UPDATE SET value='1'`));
    batch.push(q(`UPDATE lunch_money_accounts SET offset=0,cycle_end=NULL,cycle_started=NULL,cycle_since=NULL,cursor=?5,last_full_sync=CASE WHEN ?6 THEN ${NOW} ELSE last_full_sync END,last_success=${NOW},last_error=NULL,source_status=?3,source_updated_at=?4,next_run=strftime('%Y-%m-%dT%H:%M:%fZ','now','+1 hour'),lease=NULL,lease_until=NULL WHERE remote_id=?1 AND lease=?2`,str(account.status),account.plaid_last_successful_update||account.last_import||null,new Date(Date.parse(started)-5*60000).toISOString(),since?0:1));
   }
   await env.DB.batch(batch);
