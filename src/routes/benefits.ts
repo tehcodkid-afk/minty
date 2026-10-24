@@ -1,3 +1,4 @@
+import { productPreferences } from "../benefits/preferences";
 import type { Env } from "../env";
 import { HttpError, intParam, json, jsonBody, unprocessable } from "../http";
 import { CHECKED, NOT_TRACKED, PRODUCTS, productById } from "../benefits/catalog";
@@ -68,7 +69,9 @@ export async function benefits(env: Env, url: URL): Promise<Response> {
   }
   const firstFee = new Map<number, string>();
   for (const t of rows) if (t.fee && !(firstFee.get(t.account_id)! <= t.date)) firstFee.set(t.account_id, t.date);
+  const disabledCredits=await productPreferences(env);
   const result = compute({
+    disabledCredits,
     year, today: now, cards,
     rows: rows.filter((t) => t.hits),
     firstFee,
@@ -78,7 +81,7 @@ export async function benefits(env: Env, url: URL): Promise<Response> {
   });
   return json({
     year, today: now, checked: CHECKED, not_tracked: NOT_TRACKED,
-    products: PRODUCTS.map((p) => ({ id: p.id, name: p.name })),
+    products: PRODUCTS.map((p) => ({ id: p.id, name: p.name, benefits:p.benefits.map(b=>({id:b.id,name:b.name,enabled:!disabledCredits.has(`${p.id}|${b.id}`)})) })),
     ...result,
   });
 }
@@ -141,12 +144,15 @@ export async function setMark(env: Env, request: Request, email: string): Promis
   if (typeof b.used !== "boolean") throw unprocessable("used must be true or false");
   const card = await creditCard(env, b.account_id as number);
   const { patterns } = scope([{ ...card, hidden: 0 }]);
-  const rows = (await env.DB.prepare(taggedRowsSql(1, patterns)).bind(card.id).all<TxnRow>()).results.filter((t) => t.hits);
+  const allRows = (await env.DB.prepare(taggedRowsSql(1, patterns)).bind(card.id).all<TxnRow & {fee:number}>()).results;
+  const rows = allRows.filter(t=>t.hits);
   const { product } = productFor(card, rows.map(tag));
   const benefit = product?.benefits.find((x) => x.id === b.benefit_id);
   if (!benefit) throw new HttpError(404, "this card has no such credit");
   if (benefit.how !== "outside") throw unprocessable("only credits Minty can't see on a statement can be ticked");
-  if (periodStart(b.period_start as string, benefit, 1) !== b.period_start) throw unprocessable(`${b.period_start} doesn't start a period of this credit`);
+  const firstFee=allRows.filter(t=>t.fee).map(t=>t.date).sort()[0];
+  const anniversary=card.anniversary_month ?? (firstFee?Number(firstFee.slice(5,7)):1);
+  if (periodStart(b.period_start as string, benefit, anniversary) !== b.period_start) throw unprocessable(`${b.period_start} doesn't start a period of this credit`);
   await (b.used
     ? env.DB.prepare(
         `INSERT INTO benefit_marks (account_id, benefit_id, period_start, marked_by) VALUES (?, ?, ?, ?)

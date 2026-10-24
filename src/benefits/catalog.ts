@@ -120,6 +120,16 @@ const chatgpt: Benefit = {
   source: SRC.chatgpt,
 };
 
+// Additional products checked against issuer pages on 2026-10-23. Unconfirmed statement
+// descriptions keep labelSeen false, so the existing UI labels matching as provisional.
+const GOLD_SOURCE='https://www.americanexpress.com/en-us/account/get-started/gold/explore-benefits';
+const ASPIRE_SOURCE='https://global.americanexpress.com/card-benefits/view-all/hilton-aspire';
+const SURPASS_SOURCE='https://global.americanexpress.com/card-benefits/detail/hilton-credit/hilton-surpass';
+const VENTURE_SOURCE='https://www.capitalone.com/credit-cards/venture-x/';
+const DELTA_SOURCE='https://www.americanexpress.com/en-us/business/credit-cards/delta-skymiles-gold/';
+const SUMMIT_SOURCE='https://www.bankofamerica.com/credit-cards/products/alaska-airlines-infinite-credit-card/';
+const extraCredit=(id:string,name:string,amount:number,period:Period,source:string,credit:string[],note:string,charge:string[]=[],enroll=false):Benefit=>
+ ({id,name,amountCents:$(amount),period,basis:'calendar',how:'on_card',enroll,credit,charge,note,source});
 export const PRODUCTS: Product[] = [
   {
     id: "amex_business_platinum", name: "American Express Business Platinum", issuer: "American Express", feeCents: $(895),
@@ -219,12 +229,67 @@ export const PRODUCTS: Product[] = [
       globalEntry(100, SRC.altitude, "U.S. Bank"),
     ],
   },
+  {
+    id:'amex_gold',name:'American Express Gold',issuer:'American Express',feeCents:$(325),
+    institution:'American Express%',accountNames:['Gold Card%','% Gold Card%','American Express Gold%'],
+    benefits:[
+      extraCredit('dining','Dining credit',10,'monthly',GOLD_SOURCE,['%DINING%CREDIT%'],'Enrollment required. Only the current participating U.S. dining partners qualify.',[],true),
+      extraCredit('resy','Resy credit',50,'semiannual',GOLD_SOURCE,['%RESY%CREDIT%'],'Enrollment required; eligible U.S. Resy purchases, January-June and July-December.',[],true),
+      extraCredit('dunkin','Dunkin credit',7,'monthly',GOLD_SOURCE,['%DUNKIN%CREDIT%'],'Enrollment required; eligible U.S. Dunkin purchases.',['%DUNKIN%'],true),
+      {id:'uber_cash',name:'Uber Cash',amountCents:$(10),period:'monthly',basis:'calendar',how:'outside',enroll:false,note:'Add the Gold card to Uber. U.S. Uber Cash expires monthly; tick after using it.',source:GOLD_SOURCE}
+    ]
+  },
+  {
+    id:'hilton_aspire',name:'Hilton Honors Aspire',issuer:'American Express',feeCents:$(550),
+    institution:'American Express%',accountNames:['%Hilton%Aspire%'],
+    benefits:[
+      extraCredit('flight','Flight credit',50,'quarterly',ASPIRE_SOURCE,['%FLIGHT%CREDIT%','%AIRLINE%CREDIT%'],'Eligible airfare purchased directly with airlines or through Amex Travel; up to $50 per calendar quarter.'),
+      extraCredit('resort','Hilton resort credit',200,'semiannual',ASPIRE_SOURCE,['%HILTON%RESORT%CREDIT%','%RESORT%CREDIT%'],'Eligible charges at participating Hilton resorts; January-June and July-December.'),
+      {...clear(ASPIRE_SOURCE),amountCents:$(209)}
+    ]
+  },
+  {
+    id:'hilton_surpass',name:'Hilton Honors Surpass',issuer:'American Express',feeCents:$(150),
+    institution:'American Express%',accountNames:['%Hilton%Surpass%'],
+    benefits:[extraCredit('hilton','Hilton credit',50,'quarterly',SURPASS_SOURCE,['%HILTON%CREDIT%'],'Eligible purchases charged directly by a Hilton portfolio property; up to $50 each calendar quarter.')]
+  },
+  {
+    id:'venture_x',name:'Capital One Venture X',issuer:'Capital One',feeCents:$(395),
+    institution:'Capital One%',accountNames:['Venture X','Venture X %','% - Venture X'],
+    benefits:[{id:'travel',name:'Capital One Travel credit',amountCents:$(300),period:'annual',basis:'card_year',how:'outside',enroll:false,note:'Use through Capital One Travel before your account anniversary. Set the card-year month; tick after using the portal credit.',source:VENTURE_SOURCE},globalEntry(120,VENTURE_SOURCE,'Capital One')]
+  },
+  {
+    id:'delta_gold_business',name:'Delta SkyMiles Gold Business',issuer:'American Express',feeCents:$(150),
+    institution:'American Express%',accountNames:['Delta Gold Business%','%Delta%Gold%Business%'],
+    benefits:[extraCredit('delta_stays','Delta Stays credit',150,'annual',DELTA_SOURCE,['%DELTA%STAYS%CREDIT%'],'Eligible prepaid hotels and vacation rentals booked through Delta Stays. Check issuer terms for bookings and refunds.')]
+  },
+  {
+    id:'atmos_summit',name:'Atmos Rewards Summit',issuer:'Bank of America',feeCents:$(395),
+    institution:'Bank of America%',accountNames:['%Atmos%Summit%'],
+    benefits:[globalEntry(120,SUMMIT_SOURCE,'Bank of America')]
+  },
+
+  {
+    id:'bilt_palladium',name:'Bilt Palladium',issuer:'Bilt',feeCents:$(495),
+    institution:'%',accountNames:['%Bilt%Palladium%'],
+    benefits:[
+      {id:'hotel',name:'Bilt Travel hotel credit',amountCents:$(200),period:'semiannual',basis:'calendar',how:'outside',enroll:false,note:'Opt in during a qualifying Bilt Travel booking of at least two nights. January-June and July-December; often deducted at checkout. Tick when used.',source:'https://www.biltrewards.com/terms/bilt-card-offer-terms'},
+      {id:'bilt_cash',name:'Annual Bilt Cash',amountCents:$(200),period:'annual',basis:'calendar',how:'outside',enroll:false,note:'Annual Bilt Cash allocation, separate from the welcome bonus. Tick after redeeming it; unused balances follow Bilt Cash rollover and expiration rules.',source:'https://www.biltrewards.com/terms/bilt-card-offer-terms'}
+    ]
+  },
+  {
+    id:'chase_sapphire_preferred',name:'Chase Sapphire Preferred',issuer:'Chase',feeCents:$(95),
+    institution:'Chase%',accountNames:['%Sapphire Preferred%'],
+    benefits:[{...extraCredit('hotel','Chase Travel hotel credit',100,'annual','https://media.chase.com/news/Meet-the-New-Chase-Sapphire-Preferred',['%HOTEL%CREDIT%'],'Current terms announced June 15, 2026: up to $100 each account anniversary. Earlier periods had a $50 limit; historical totals use the current catalog. Confirm your anniversary month.'),basis:'card_year'},globalEntry(120,'https://media.chase.com/news/Meet-the-New-Chase-Sapphire-Preferred','Chase')]
+  },
+
 ];
 
 export const productById = new Map(PRODUCTS.map((p) => [p.id, p]));
 
 /** Shown on the page: what ABC leaves out, so nobody wonders. */
 export const NOT_TRACKED = [
+  "Delta renewal-dependent rideshare benefits, conditional travel-delay reimbursements and stay-specific property credits.",
   "Perks that aren't dollar credits (lounges, status, free-night or anniversary points).",
   "Business Platinum credits that unlock only after $250,000 of spend in a year.",
   "The Schwab Platinum's Appreciation Bonus (it depends on Schwab holdings).",

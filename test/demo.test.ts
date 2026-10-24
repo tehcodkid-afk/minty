@@ -70,7 +70,7 @@ describe("demo data through the real routes", () => {
     const { status, body } = await getJson<any>("/benefits", { envOverrides });
     expect(status).toBe(200);
     const byProduct = new Map(body.cards.filter((c: any) => c.product).map((c: any) => [c.product.id, c]));
-    expect([...byProduct.keys()].sort()).toEqual(["amex_business_gold", "amex_platinum", "citi_strata_premier"]);
+    expect([...byProduct.keys()].sort()).toEqual(["amex_business_gold", "amex_platinum", "chase_sapphire_preferred", "citi_strata_premier"]);
     const platinum: any = byProduct.get("amex_platinum");
     const statuses = new Set(platinum.benefits.flatMap((b: any) => b.periods.map((p: any) => p.status)));
     expect(statuses).toContain("used");

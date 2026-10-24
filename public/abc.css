@@ -105,3 +105,5 @@ dialog.abc:focus { outline: none; }
   .abc .abc-top { padding-top: 14px; padding-bottom: 10px; }
   .abc header .sub { display: none; }               /* keep the pinned header to one line on a phone */
 }
+
+.abc-product-credit { display:flex; align-items:center; gap:10px; padding:8px 0; }

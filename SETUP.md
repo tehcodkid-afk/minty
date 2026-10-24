@@ -347,3 +347,12 @@ One Minty installation is locked to one Lunch Money budget after the first confi
 Before switching feeds, keep a code checkpoint and a private database backup. Reverting code
 alone after imports does not restore previous feed assignments, ownership or pending rows;
 restore the paired database checkpoint as well. Keep database backups and API keys out of Git.
+
+
+### Card purpose and credits you use
+
+Open **Card settings** on the transaction dashboard. Each account starts unassigned unless it was already selected for Household. Choose **Personal / Household** or **Churning**. The dashboard and Quick tag can filter by this purpose. Only Personal / Household cards contribute untagged spend to personal totals, and H-tagged purchases on those cards contribute to Household. Churning and unassigned accounts stay available in the full transaction feed. Reclassifying an account preserves tags and reviews; it changes inclusion in spending totals. Manual household entries remain included independently.
+
+In **ABC / card credits**, open **Credits I use**. Each switch applies to that product across all cards and players. Disabled benefits leave tracker totals and expiration reminders; their transactions and used marks are retained. Re-enable a benefit to restore its tracked history. These settings control tracking, not issuer enrollment or eligibility.
+
+Additional products include consumer Gold, Hilton Aspire and Surpass, Venture X, Delta Gold Business, Atmos Summit, Bilt Palladium and Sapphire Preferred. For generic bank account names, select the actual product under Other cards. Portal benefits such as Venture X and Bilt require a manual used tick. Conditional perks and non-dollar awards remain listed as exclusions. Statement wording for newly added products is provisional; an unmatched credit does not establish that the benefit is unused. Catalog terms are current, not a versioned historical terms database.

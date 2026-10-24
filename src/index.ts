@@ -1,3 +1,4 @@
+import { saveProductPreference } from "./benefits/preferences";
 import type { Env } from "./env";
 import * as lunchMoney from "./lunch-money";
 import { checkAccess } from "./access";
@@ -69,6 +70,7 @@ const ROUTES: Array<[method: string, path: RegExp, handler: Handler]> = [
   ["GET", /^\/tags$/, ({ env }) => data.listTags(env)],
   ["GET", /^\/sync-request$/, ({ env }) => syncReq.getSyncRequest(env)],
   ["POST", /^\/sync-request$/, ({ env, email }) => syncReq.requestSync(env, email)],
+  ["PUT", /^\/benefits\/preferences$/, ({env,request,email}) => saveProductPreference(env,request,email)],
   ["GET", /^\/benefits$/, ({ env, url }) => abc.benefits(env, url)],
   ["PUT", /^\/benefits\/cards\/(\d+)$/, ({ env, request, params }) => abc.setCard(env, request, Number(params[0]))],
   ["PUT", /^\/benefits\/marks$/, ({ env, request, email }) => abc.setMark(env, request, email)],
