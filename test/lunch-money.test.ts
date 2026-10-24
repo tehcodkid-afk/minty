@@ -17,6 +17,8 @@ beforeEach(async()=>{
  await env.DB.batch(["DELETE FROM lunch_money_plans","DELETE FROM lunch_money_budget","DELETE FROM lunch_money_stage","DELETE FROM lunch_money_accounts"].map(s=>env.DB.prepare(s)));
  await loadFixture();pages=[];budget=42;single=row();
  vi.stubGlobal("fetch",vi.fn(async(input:any,init:any)=>{
+  // Preserve Workers request validation even while substituting the upstream response.
+  new Request(input,init);
   const u=new URL(typeof input==="string"?input:input.url);
   expect(u.origin).toBe("https://api.lunchmoney.dev");expect(init.headers.Authorization).toBe("Bearer synthetic-token");expect(init.method??"GET").toBe("GET");
   let d:any;
@@ -162,4 +164,18 @@ it("uses an update cursor after history completes and does not delete unchanged 
 it("maps Lunch Money cash and liability accounts to Minty's balance model",()=>{
  expect(accountType("cash")).toBe("depository");expect(accountType("credit")).toBe("credit");
  expect(accountType("other liability")).toBe("loan");expect(accountType("investment")).toBe("investment");
+});
+
+it("refuses upstream redirects without forwarding the credential",async()=>{
+ const fetcher=vi.fn(async(input:any,init:any)=>{
+  const request=new Request(input,init);
+  expect(request.redirect).toBe("manual");
+  return new Response(null,{status:302,headers:{Location:"https://untrusted.example/collect"}});
+ });
+ vi.stubGlobal("fetch",fetcher);
+ const response=await req("");expect(response.status).toBe(502);
+ const body=await response.json() as any;expect(body.detail).toMatch(/HTTP 302/);
+ expect(JSON.stringify(body)).not.toMatch(/synthetic-token|untrusted/);
+ expect(fetcher).toHaveBeenCalledTimes(1);
+ expect(await env.DB.prepare("SELECT * FROM lunch_money_accounts").first()).toBeNull();
 });

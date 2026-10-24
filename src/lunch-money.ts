@@ -14,8 +14,10 @@ function token(env:Env):string {
  return env.LUNCH_MONEY_TOKEN.trim();
 }
 async function get(env:Env,path:string,allowMissing=false):Promise<Obj> {
+ // Workers rejects redirect:"error" before sending. Manual mode also prevents credentials
+ // following redirects; the non-2xx check below rejects any redirect response.
  let response:Response;
- try { response=await fetch(API+path,{headers:{Authorization:"Bearer "+token(env),Accept:"application/json"},redirect:"error",signal:AbortSignal.timeout(20000)}); }
+ try { response=await fetch(API+path,{headers:{Authorization:"Bearer "+token(env),Accept:"application/json"},redirect:"manual",signal:AbortSignal.timeout(20000)}); }
  catch(e) { if(e instanceof HttpError)throw e; throw new HttpError(502,"Lunch Money could not be reached. Existing records were retained."); }
  if(allowMissing&&response.status===404)return {missing:true};
  if(!response.ok)throw new HttpError(502,`Lunch Money returned HTTP ${response.status}. Check its connection and API token.`);
