@@ -3,6 +3,8 @@ import {env} from "cloudflare:workers";
 import {call,loadFixture} from "./helpers";
 import {accountType,cents,normalizeTransaction,syncNext} from "../src/lunch-money";
 import type {Env} from "../src/env";
+import {refreshTotals,markAuditDirty} from "../src/audit/totals";
+import {countingDb} from "../src/limits";
 const e={...env,LUNCH_MONEY_TOKEN:"synthetic-token"} as unknown as Env;
 const accounts=[{id:701,name:"Everyday",mask:"4444",type:"credit",balance:"123.45",currency:"usd",institution_name:"Example",status:"active"},{id:702,name:"Other",mask:"5555",type:"depository",balance:"500",currency:"usd",institution_name:"Example",status:"active"}];
 let pages:any[],budget=42;
@@ -178,4 +180,51 @@ it("refuses upstream redirects without forwarding the credential",async()=>{
  expect(JSON.stringify(body)).not.toMatch(/synthetic-token|untrusted/);
  expect(fetcher).toHaveBeenCalledTimes(1);
  expect(await env.DB.prepare("SELECT * FROM lunch_money_accounts").first()).toBeNull();
+});
+
+it("unchanged and empty Lunch Money syncs do not rebuild the full audit",async()=>{
+ await select();await syncNext(e);await refreshTotals(e);
+ for(const transactions of [[row()],[],[row(1,{notes:"Upstream note changed"})]]){
+  await env.DB.prepare("UPDATE lunch_money_accounts SET next_run=''").run();
+  pages=[{transactions,has_more:false}];
+  expect(await syncNext(e)).toMatchObject({complete:true});
+  const measured=countingDb(e.DB);
+  expect(await refreshTotals({...e,DB:measured.db})).toEqual({from:null,full:false});
+  expect(measured.rows()).toBeLessThanOrEqual(10);
+ }
+});
+it("real Lunch Money corrections and confirmed removals still refresh the audit",async()=>{
+ await select();await syncNext(e);await refreshTotals(e);
+ await env.DB.prepare("UPDATE lunch_money_accounts SET next_run=''").run();
+ pages=[{transactions:[row(1,{amount:"20"})],has_more:false}];
+ expect(await syncNext(e)).toMatchObject({complete:true});
+ expect(await refreshTotals(e)).toMatchObject({full:true});
+ expect(await env.DB.prepare("SELECT amount_cents FROM monthly_totals WHERE month='2026-10' AND category='Food'").first()).toEqual({amount_cents:2000});
+ await env.DB.prepare("UPDATE lunch_money_accounts SET next_run='',last_full_sync=NULL").run();
+ pages=[{transactions:[],has_more:false}];single=null;
+ expect(await syncNext(e)).toMatchObject({complete:true});
+ expect(await refreshTotals(e)).toMatchObject({full:true});
+ expect(await env.DB.prepare("SELECT amount_cents FROM monthly_totals WHERE month='2026-10' AND category='Food'").first()).toBeNull();
+});
+
+it("unchanged full-history reconciliation preserves manual audit invalidation",async()=>{
+ await select();await syncNext(e);await refreshTotals(e);
+ await env.DB.prepare("UPDATE lunch_money_accounts SET next_run='',last_full_sync=NULL").run();
+ expect(await syncNext(e)).toMatchObject({complete:true});
+ expect(await refreshTotals(e)).toEqual({from:null,full:false});
+ await markAuditDirty(e);
+ await env.DB.prepare("UPDATE lunch_money_accounts SET next_run=''").run();
+ pages=[{transactions:[],has_more:false}];
+ expect(await syncNext(e)).toMatchObject({complete:true});
+ expect(await refreshTotals(e)).toMatchObject({full:true});
+});
+it("nullable ledger changes still invalidate summaries and retain the source record",async()=>{
+ await select();await syncNext(e);await refreshTotals(e);
+ for(const account_owner of ["Synthetic Owner",null]){
+  await env.DB.prepare("UPDATE lunch_money_accounts SET next_run=''").run();
+  pages=[{transactions:[row(1,{plaid_metadata:{account_owner}})],has_more:false}];
+  expect(await syncNext(e)).toMatchObject({complete:true});
+  expect(await refreshTotals(e)).toMatchObject({full:true});
+  expect(await env.DB.prepare("SELECT account_owner FROM transactions WHERE plaid_txn_id='lunchmoney:42:1'").first()).toEqual({account_owner});
+ }
 });
