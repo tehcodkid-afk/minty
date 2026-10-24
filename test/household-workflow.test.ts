@@ -15,7 +15,7 @@ beforeEach(async()=>{
 describe("tag-first spending workflow",()=>{
  it("shows only Household tags and leaves untagged spending personal by owner",async()=>{
   const data=(await list()).body;expect(data.rows).toEqual([]);expect(data.summary.household_cents).toBe(0);
-  expect(data.personal).toEqual([{owner:"me",label:"Me",amount_cents:8412},{owner:"spouse",label:"Spouse",amount_cents:32749}]);
+  expect(data.personal).toEqual([{owner:"me",label:"Me",amount_cents:0},{owner:"spouse",label:"Spouse",amount_cents:0}]);
   expect((await list("candidates")).body.rows).toEqual([]);
   await select();expect((await list("candidates")).body.rows.map((r:any)=>r.id)).toEqual([100]);
   expect((await list()).body.rows).toEqual([]);
@@ -25,6 +25,7 @@ describe("tag-first spending workflow",()=>{
   expect(updated.personal[0].amount_cents).toBe(0);
  });
  it.each(["Sweeps","Debit","Gold"])("%s tags stay out of both Household and misc totals",async category=>{
+  await select();
   expect((await tag(100,category)).status).toBe(200);
   expect((await list()).body.rows).toEqual([]);expect((await list()).body.personal[0].amount_cents).toBe(0);
   const row=(await list("tagging")).body.rows.find((r:any)=>r.id===100);expect(row.tags).toEqual(["groceries",category]);
@@ -34,7 +35,7 @@ describe("tag-first spending workflow",()=>{
   expect((await tag(100,"Household")).status).toBe(422);
   await select(20);expect((await tag(200,"Household")).status).toBe(200);
   expect((await list()).body.summary.owed_to_a_cents).toBe(-1033);
-  await send("/household/accounts/20","PUT",{enabled:false});expect((await list()).body.rows).toHaveLength(1);
+  await send("/household/accounts/20","PUT",{enabled:false});expect((await list()).body.rows).toHaveLength(0);
   expect((await tag(201,"Household")).status).toBe(422);
  });
  it("tag changes and split changes succeed or fail together under concurrent edits",async()=>{
@@ -52,11 +53,13 @@ describe("tag-first spending workflow",()=>{
   await send("/transactions/100/tags","PUT",{tags:[]});expect((await list()).body.rows).toHaveLength(0);
   expect((await list()).body.personal[0].amount_cents).toBe(8412);
  });
- it("generic Household tags are visible but require a confirmed split",async()=>{
+ it("generic Household tags on personal cards are visible but require a confirmed split",async()=>{
+  await select();
   await send("/transactions/100/tags","PUT",{tags:["household"]});
   const d=(await list()).body;expect(d.rows).toHaveLength(1);expect(d.summary.needs_review).toBe(1);expect(d.summary.owed_to_a_cents).toBe(0);
  });
  it("pending purchases cannot be tagged and refunds reduce personal spend",async()=>{
+  await select();
   expect((await tag(101,"Gold")).status).toBe(422);
   await db.prepare("UPDATE transactions SET amount_cents=-8412 WHERE id=100").run();
   expect((await list()).body.personal[0].amount_cents).toBe(-8412);
@@ -82,6 +85,7 @@ describe("tag-first spending workflow",()=>{
   expect((await list("household","2026-11")).body.entries).toHaveLength(0);expect((await list()).body.summary.owed_to_a_cents).toBe(-6000);
  });
  it("merchant categories never reclassify a transaction or change the split",async()=>{
+  await select();
   expect((await send("/household/categories","PUT",{transaction_id:100,category:"Groceries"})).status).toBe(200);
   const d=(await list("tagging")).body;expect(d.rows.find((r:any)=>r.id===100).merchant_category.category).toBe("Groceries");
   expect(d.summary.household_cents).toBe(0);expect(d.personal[0].amount_cents).toBe(8412);

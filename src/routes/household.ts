@@ -29,25 +29,26 @@ export async function list(env: Env, config: Config, url: URL): Promise<Response
  const rules=(await env.DB.prepare("SELECT * FROM household_rules ORDER BY id DESC LIMIT 501").all<Rule>()).results;
  const settlements=(await env.DB.prepare("SELECT * FROM household_settlements WHERE month=? AND currency=? ORDER BY date DESC,id LIMIT 1001").bind(m,c).all<Settlement>()).results;
  const history=(await env.DB.prepare("SELECT institution_name AS bank,status,last_error,CASE WHEN sync_start_cursor IS NOT NULL OR (source='lunchmoney' AND txn_cursor IS NULL) THEN 1 ELSE 0 END AS catching_up FROM items WHERE products!='investments' LIMIT 101").all()).results;
- const accounts=(await env.DB.prepare(`SELECT a.id,coalesce(a.display_name,a.name,'Account') AS name,a.mask,a.owner,i.institution_name AS bank,
- EXISTS(SELECT 1 FROM household_accounts h WHERE h.account_id=a.id) AS household FROM accounts a JOIN items i ON i.id=a.item_id WHERE a.type!='investment' ORDER BY a.owner,i.institution_name,a.name LIMIT 501`).all<{id:number;household:number}>()).results;
+ const accounts=(await env.DB.prepare(`SELECT a.id,coalesce(a.display_name,a.name,'Account') AS name,a.mask,a.owner,a.purpose,i.institution_name AS bank,
+ EXISTS(SELECT 1 FROM household_accounts h WHERE h.account_id=a.id) AS household FROM accounts a JOIN items i ON i.id=a.item_id WHERE a.type!='investment' ORDER BY a.owner,i.institution_name,a.name LIMIT 501`).all<{id:number;household:number;purpose:string}>()).results;
  const selected=new Set(accounts.filter(a=>a.household).map(a=>a.id));
  const entries=(await env.DB.prepare("SELECT * FROM household_entries WHERE month=? AND currency=? ORDER BY name LIMIT 1001").bind(m,c).all<ManualEntry>()).results;
  const recurring=(await env.DB.prepare("SELECT * FROM household_recurring WHERE active=1 AND currency=? ORDER BY name LIMIT 501").bind(c).all<ManualEntry & {start_month:string}>()).results;
  const categories=(await env.DB.prepare("SELECT merchant,category,source FROM merchant_categories LIMIT 5001").all<{merchant:string;category:string;source:string}>()).results;
  const categoriesByName=new Map(categories.map(r=>[r.merchant,r]));
  const mapped=new Map(reviews.map(r=>[r.transaction_id,r]));
- const household=rows.filter(t=>t.tags.some(tag=>tag.toLowerCase()==="household")&&!t.tags.some(tag=>/^(sweeps|debit|gold)$/i.test(tag)));
+ const household=rows.filter(t=>selected.has(t.account_id)&&t.tags.some(tag=>tag.toLowerCase()==="household")&&!t.tags.some(tag=>/^(sweeps|debit|gold)$/i.test(tag)));
  const summary=truncated||settlements.length>1000||entries.length>1000?null:summarize(household,reviews,settlements);
  if(summary) for(const e of entries.filter(e=>!e.voided_at)) {
   const [a,b]=splitCents(e.amount_cents,e.a_weight,e.b_weight);
   summary.household_cents+=e.amount_cents;summary.a_share_cents+=a;summary.b_share_cents+=b;
   summary.owed_to_a_cents+=(e.payer==="a"?e.amount_cents:0)-a;
  }
- const personal=[...config.users].map(([owner,label])=>({owner,label,amount_cents:truncated?null:rows.filter(t=>t.owner===owner&&workflowTags(t.tags).length===0&&isSpending(t)).reduce((n,t)=>n+(t.amount_cents||0),0)}));
+ const personalAccounts=new Set(accounts.filter(a=>a.purpose==='personal').map(a=>a.id));
+ const personal=[...config.users].map(([owner,label])=>({owner,label,amount_cents:truncated?null:rows.filter(t=>t.owner===owner&&personalAccounts.has(t.account_id)&&workflowTags(t.tags).length===0&&isSpending(t)).reduce((n,t)=>n+(t.amount_cents||0),0)}));
  const view=url.searchParams.get("view")||"household";
  const output=view==="tagging"?rows:view==="candidates"?rows.filter(t=>selected.has(t.account_id)&&workflowTags(t.tags).length===0&&isSpending(t)):household;
- return json({month:m,currency:c,settings,people:[...config.users].map(([key,label])=>({key,label})),truncated,summary,personal,rules,settlements,history,accounts,entries,recurring,
+ return json({month:m,currency:c,settings,people:[...config.users].map(([key,label])=>({key,label})),truncated,summary,personal,unassigned_accounts:accounts.filter(a=>a.purpose==='unassigned').length,rules,settlements,history,accounts,entries,recurring,
  rows:output.map(t=>({...t,fingerprint:fingerprint(t),review:mapped.get(t.id)??null,eligible:selected.has(t.account_id),spending:isSpending(t),
  stale:!!mapped.get(t.id)&&mapped.get(t.id)!.fingerprint!==fingerprint(t),suggestion:suggest(t,rules),merchant_category:categoriesByName.get(merchant(t))??null,
  suggested_payer:t.owner===settings.a_owner?"a":t.owner===settings.b_owner?"b":null}))});
@@ -145,9 +146,12 @@ export async function voidSettlement(env: Env,id: string,email: string): Promise
 
 interface ManualEntry { id:string; month:string; name:string; currency:string; amount_cents:number; payer:"a"|"b"; a_weight:number; b_weight:number; note:string; recurring_id:string|null; voided_at:string|null }
 export async function setAccount(env:Env,request:Request,email:string,id:number):Promise<Response>{
- const b=await body(request);if(typeof b.enabled!=="boolean")throw unprocessable("Choose whether this is a household card");
+ const b=await body(request);
+ const purpose=b.purpose ?? (typeof b.enabled==='boolean' ? (b.enabled?'personal':'unassigned') : null);
+ if(!['unassigned','personal','churning'].includes(purpose as string))throw unprocessable("Choose Personal / Household or Churning");
+ b.enabled=purpose==='personal';
  if(!await env.DB.prepare("SELECT id FROM accounts WHERE id=? AND type!='investment'").bind(id).first())throw new HttpError(404,"Account not found");
- await env.DB.batch([env.DB.prepare(b.enabled?"INSERT INTO household_accounts(account_id) VALUES(?) ON CONFLICT DO NOTHING":"DELETE FROM household_accounts WHERE account_id=?").bind(id),env.DB.prepare("INSERT INTO household_audit(entity,entity_id,action,detail,actor) VALUES('account',?,'select',?,?)").bind(String(id),JSON.stringify(b),email)]);
+ await env.DB.batch([env.DB.prepare("UPDATE accounts SET purpose=? WHERE id=?").bind(purpose,id),env.DB.prepare(b.enabled?"INSERT INTO household_accounts(account_id) VALUES(?) ON CONFLICT DO NOTHING":"DELETE FROM household_accounts WHERE account_id=?").bind(id),env.DB.prepare("INSERT INTO household_audit(entity,entity_id,action,detail,actor) VALUES('account',?,'select',?,?)").bind(String(id),JSON.stringify(b),email)]);
  return json({ok:true});
 }
 export async function saveEntry(env:Env,config:Config,request:Request,email:string,recurring=false):Promise<Response>{

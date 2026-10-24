@@ -60,3 +60,29 @@ test("typing in a field does not tag, failed saves do not advance, and mobile fi
  assert.equal(await page.locator("[data-undo]").isDisabled(),true);
  assert.equal(await page.locator("#household").evaluate(el=>el.scrollWidth>el.clientWidth),false);
 });
+
+test("card purpose saves on mobile and filters the dashboard",async t=>{
+ const page=await browser.newPage({viewport:{width:390,height:844}});t.after(()=>page.close());
+ await page.goto(base+'/?tagging');await page.locator('[data-view="cards"]').click();
+ const select=page.locator('[data-account]').first();await select.waitFor();const id=await select.getAttribute('data-account');
+ await select.selectOption('churning');await page.locator('#householdMessage').filter({hasText:'Card purpose saved'}).waitFor();
+ assert.equal(await page.locator(`[data-account="${id}"]`).inputValue(),'churning');
+ assert.equal(await page.locator('#household').evaluate(el=>el.scrollWidth>el.clientWidth),false);
+ await page.locator('#household .abc-close button').click();
+ await page.locator('#purposeFilter').selectOption('churning');
+ const rows=await page.evaluate(()=>fetch('/transactions?purpose=churning').then(r=>r.json()));
+ assert.ok(rows.length>0);assert.ok(rows.every(r=>String(r.account_id)===id));
+});
+test("product credit switches persist and stay open for quick editing",async t=>{
+ const page=await browser.newPage();t.after(()=>page.close());await page.goto(base+'/?abc');
+ await page.locator('[data-product-credit]').first().waitFor({state:'attached'});
+ await page.getByText('Credits I use', {exact:false}).first().click();
+ const checkbox=page.locator('[data-product-credit]').first();
+ await checkbox.evaluate(el=>el.closest('details').open=true);
+ const product=await checkbox.getAttribute('data-product-credit'),benefit=await checkbox.getAttribute('data-benefit-id');
+ await checkbox.uncheck();
+ await page.waitForFunction(({product,benefit})=>{const e=document.querySelector(`[data-product-credit="${product}"][data-benefit-id="${benefit}"]`);return e&&!e.checked&&!e.disabled;},{product,benefit});
+ assert.equal(await page.locator(`[data-product-credit="${product}"][data-benefit-id="${benefit}"]`).isVisible(),true);
+ const data=await page.evaluate(()=>fetch('/benefits').then(r=>r.json()));
+ assert.ok(data.cards.filter(c=>c.product?.id===product).every(c=>!c.benefits.some(b=>b.id===benefit)));
+});

@@ -4,7 +4,7 @@ let USERS = [{ key: "me", label: "Alex" }, { key: "sam", label: "Sam" }];   // o
 const colorOf = k => { const i = USERS.findIndex(u => u.key === k); return i < 0 ? "var(--muted)" : `var(--u${i % 6})`; };
 const labelOf = k => USERS.find(u => u.key === k)?.label ?? k;
 // cards: card members picked on multi-card accounts, as "<account_id>:<member>" ("" member = none)
-let state = { owner: "all", q: "", start: "", end: "", tags: [], tagMode: "any", banks: [], accounts: [], cards: [] };
+let state = { owner: "all", purpose: "", q: "", start: "", end: "", tags: [], tagMode: "any", banks: [], accounts: [], cards: [] };
 let ITEMS = null;                  // linked bank logins from /items (null until loaded)
 let ACCOUNTS = null;               // their accounts and cards from /accounts (null until loaded)
 let openRows = new Set();          // plaid_txn_id of expanded rows (survives re-render)
@@ -49,6 +49,7 @@ async function load(more = false) {
   if (state.end) p.set("end", state.end);
   for (const t of state.tags) p.append("tag", t);
   if (state.tags.length > 1 && state.tagMode === "all") p.set("tag_mode", "all");
+  if (state.purpose) p.set("purpose", state.purpose);
   for (const id of state.banks) p.append("item_id", id);
   for (const id of state.accounts) p.append("account_id", id);
   for (const k of state.cards) p.append("card", k);
@@ -235,6 +236,7 @@ const acctName = a => `${a.name || "Account"}${a.mask ? ` ••${a.mask}` : ""}
 
 function visibleAccounts() {
   return (ACCOUNTS || []).filter(a =>
+    (!state.purpose || a.purpose === state.purpose) &&
     (state.owner === "all" || a.owner === state.owner) &&
     (!state.banks.length || state.banks.includes(a.item_id)));
 }
@@ -928,3 +930,8 @@ document.getElementById("selRemove").addEventListener("change", e => {
 loadUsers().then(() => { loadItems(); loadAccounts(); load(); loadHealth(); checkSync(false); });
 setInterval(() => { if (!document.hidden && !syncBtn.classList.contains("syncing")) checkSync(false); }, 10 * 60 * 1000);   // keep "Last synced" current
 setInterval(() => { if (!document.hidden) loadHealth(); }, 5 * 60 * 1000);   // downloads move every 10 minutes
+
+document.getElementById("purposeFilter").addEventListener("change", e => {
+ state.purpose=e.target.value; pruneAccounts(); populateAccountFilter(); load();
+});
+document.getElementById("household").addEventListener("close", async () => { await loadAccounts(); pruneAccounts(); populateAccountFilter(); load(); });

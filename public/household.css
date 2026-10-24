@@ -59,3 +59,7 @@
 .hh .hh-quick-row>span:first-child { min-width:0;overflow-wrap:anywhere; }
 .hh .hh-stats { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); }
 @media(max-width:640px) { .hh .hh-card-list { grid-template-columns:1fr; } .hh .hh-quick-actions button { font-size:12px;padding:8px; } .hh .hh-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.hh .hh-card-list .hh-check { flex-wrap:wrap; }
+.hh .hh-card-list .hh-check > span { flex:1 1 180px; min-width:0; overflow-wrap:anywhere; }
+.hh .hh-card-list select { max-width:100%; }

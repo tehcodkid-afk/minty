@@ -271,7 +271,7 @@ describe("GET /benefits", () => {
   it("reports each credit card, with its product, credits and the year's totals", async () => {
     const { status, body } = await getJson("/benefits?year=2026");
     expect(status).toBe(200);
-    expect(body).toMatchObject({ year: 2026, checked: CHECKED, products: expect.arrayContaining([{ id: "amex_platinum", name: "American Express Platinum" }]) });
+    expect(body).toMatchObject({ year: 2026, checked: CHECKED, products: expect.arrayContaining([expect.objectContaining({ id: "amex_platinum", name: "American Express Platinum" })]) });
     const byId = (id: number) => body.cards.find((c: any) => c.account_id === id);
     expect(body.cards.map((c: any) => [c.account_id, c.product?.id ?? null])).toEqual([
       [12, null], [10, "amex_business_platinum"], [11, "amex_platinum"], [20, "usbank_altitude_reserve"]]);        // no checking accounts

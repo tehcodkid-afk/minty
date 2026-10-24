@@ -41,6 +41,7 @@
   const cardTitle = c => `${esc(c.name || "Card")}${c.mask ? ` ••${esc(c.mask)}` : ""}`;
 
   function render() {
+    const openSettings=new Set([...main.querySelectorAll("details[open]")].map(el=>el.querySelector(":scope > summary")?.textContent));
     const d = data, t = d.totals;
     const tracked = d.cards.filter(c => c.product && !c.hidden);
     const hidden = d.cards.filter(c => c.hidden);
@@ -58,6 +59,7 @@
         <span><span class="sq missed"></span>missed</span><span><span class="sq open"></span>open now</span><span><span class="sq upcoming"></span>not started</span>
       </div>`;
 
+    html += `<details class="abc-settings"><summary>Credits I use &middot; applies to every card of a product</summary><p>Turn off benefits you do not use. They leave tracker totals and reminder candidates on every matching card, for both players. Transactions and saved usage marks are preserved.</p>${d.products.filter(p=>d.cards.some(c=>c.product?.id===p.id)).map(p=>`<details><summary>${esc(p.name)}</summary>${(p.benefits||[]).map(b=>`<label class="abc-product-credit"><input type="checkbox" data-product-credit="${esc(p.id)}" data-benefit-id="${esc(b.id)}" ${b.enabled?'checked':''}>${esc(b.name)}</label>`).join('')}</details>`).join('')}</details>`;
     const soon = d.ending_soon.slice(0, 8);
     if (soon.length && !past) {
       html += `<h3>Use before it resets</h3><div class="abc-list abc-soon">` + soon.map(e => `<div class="row">
@@ -83,10 +85,11 @@
         <button type="button" class="abc-link" data-unhide="${c.account_id}">Show again</button></div>`).join("") + `</div>`;
     }
 
-    html += `<div class="abc-foot">Benefit details checked ${esc(d.checked)} (Frequent Miler, Doctor of Credit, issuers' pages); each credit links to its source.
+    html += `<div class="abc-foot">Original catalog checked ${esc(d.checked)}; additional products checked 2026-10-23 (issuer sources linked for each benefit). Historical totals use catalog terms, which may differ from earlier offers.
       Credits count in the period of the purchase they paid back. For credits marked <span class="abc-guess" aria-hidden="true">*</span>, no statement credit
       has posted yet, so Minty matches it by a best guess at its wording. Not tracked:<ul>${d.not_tracked.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
     main.innerHTML = html;
+    for(const el of main.querySelectorAll("details"))if(openSettings.has(el.querySelector(":scope > summary")?.textContent))el.open=true;
   }
 
   function cardHTML(c) {
@@ -106,6 +109,7 @@
         <span class="sum"><b>${money(t.used_cents)}</b> of ${money(t.available_cents)} used (${pct}%)${t.open_now_cents ? ` · <b class="open">${money(t.open_now_cents)}</b> open` : ""}</span>
       </summary>
       ${c.benefits.map(b => benefitHTML(c, b)).join("")}
+
       <details class="abc-settings"><summary>Card settings</summary>
         <div class="tools">${productPicker} ${yearPicker} <button type="button" class="abc-link" data-hide="${c.account_id}">Hide this card</button></div>
       </details>
@@ -118,7 +122,7 @@
     const guess = !b.label_seen && b.how === "on_card"
       ? `<span class="abc-guess" title="No statement credit has posted yet: Minty matches it by a best guess at its wording">*</span>` : "";
     const left = `<div><div class="name">${esc(b.name)}${guess} · ${money(b.amount_cents)} ${PERIOD[b.period]}${chips}</div>
-      <div class="note">${esc(b.note)} <a class="src" href="${esc(b.source)}" target="_blank" rel="noopener">source</a></div></div>`;
+      <div class="note">${esc(b.note)} ${b.source?`<a class="src" href="${esc(b.source)}" target="_blank" rel="noopener">source</a>`:"Manually configured"}</div></div>`;
 
     if (b.once) {
       const o = b.once;
@@ -165,7 +169,11 @@
 
   main.addEventListener("change", async e => {
     const s = e.target;
-    if (s.dataset.product) {
+    if (s.dataset.productCredit) {
+      s.disabled=true;
+      try { if(await put('/benefits/preferences',{product_id:s.dataset.productCredit,benefit_id:s.dataset.benefitId,enabled:s.checked}))await load(); else s.checked=!s.checked; }
+      finally {s.disabled=false;}
+    } else if (s.dataset.product) {
       // "auto" / "" = recognise automatically (null); "none" = no tracked credits; else a product id
       const v = s.value;
       if (await put(`/benefits/cards/${s.dataset.product}`, { product_id: v === "auto" || v === "" ? null : v })) load();

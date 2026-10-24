@@ -288,6 +288,7 @@ function ledger(b: Benefit, rows: Tagged[], anniversary: number, cap = (start: s
 }
 
 export interface Input {
+  disabledCredits?: Set<string>;
   year: number;
   today: string;                    // YYYY-MM-DD
   cards: CardRow[];
@@ -328,6 +329,8 @@ export function computeCard(card: CardRow, input: Input, cardRows = input.rows.f
       L = ledger(b, rows, anniversary);
     }
     ledgers.set(b.id, L);
+    // Disabled benefits still supply their ledger to dependent tiers (e.g. Dell).
+    if (input.disabledCredits?.has(`${product.id}|${b.id}`)) continue;
 
     const bo: BenefitOut = {
       id: b.id, name: b.name, amount_cents: b.amountCents, period: b.period, basis: b.basis, how: b.how, enroll: b.enroll,

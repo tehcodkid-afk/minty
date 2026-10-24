@@ -56,7 +56,7 @@ export async function accounts(env: Env, url: URL): Promise<Response> {
   const owner = url.searchParams.get("owner");
   // Retirement accounts (EGG) are islanded: left out unless ?view=all, or switched to the dashboard.
   const island = url.searchParams.get("view") === "all" ? "1" : `NOT ${IN_RETIREMENT("accounts")}`;
-  const select = `SELECT id, owner, item_id, plaid_account_id, feed, ${ACCOUNT_NAME("accounts")} AS name, name AS plaid_name, display_name, mask, type, subtype,
+  const select = `SELECT id, owner, item_id, plaid_account_id, feed, purpose, ${ACCOUNT_NAME("accounts")} AS name, name AS plaid_name, display_name, mask, type, subtype,
                          balance_current_cents / 100.0 AS balance_current,
                          balance_available_cents / 100.0 AS balance_available,
                          currency, updated_at, ${IN_RETIREMENT("accounts")} AS in_retirement
@@ -188,8 +188,11 @@ export async function transactions(env: Env, url: URL): Promise<Response> {
   const limit = intParam(url, "limit", { def: 500, min: 1, max: 1000 })!;
 
   // Retirement accounts' transactions (an HSA's, say) show in EGG, not here, unless switched back.
+  const purpose = url.searchParams.get("purpose");
+  if (purpose && !['personal','unassigned','churning'].includes(purpose)) throw unprocessable("Unknown card purpose");
   const clauses: string[] = [`NOT ${IN_RETIREMENT("a")}`];
   const params: unknown[] = [];
+  if (purpose) { clauses.push("a.purpose = ?"); params.push(purpose); }
   if (owner)                   { clauses.push("t.owner = ?");      params.push(owner); }
   if (accountIds.length || cards.length) {
     const any: string[] = [];
